@@ -1,0 +1,1096 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Инструкция и образец</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="assets/style.css"></head><body><a class="skip" href="#main">Перейти к содержанию</a><header class="shell top"><a class="brand" href="index.html"><span class="emblem">ПП</span><span><strong>Практика / Методические материалы</strong><small>4 курс · 7 семестр · C# WPF · MySQL в XAMPP</small></span></a><span class="version">Версия 1.0</span></header><div class="shell"><nav><a href="index.html" >Задание</a><a href="lessons.html" aria-current=page>Инструкция и образец</a><a href="areas.html" >Предметные области</a></nav><main id="main"><section class="hero"><p class="eyebrow">Учебный маршрут / 2026-2027</p><h1>Инструкция и образец</h1><p>4 курс · 7 семестр · C# WPF · MySQL в XAMPP</p><span class="badge">Учебный комплект</span></section><div class="downloads"><a class="button" href="downloads/assignment.pdf">Скачать задание практики (PDF)</a><a class="button" href="downloads/guide.pdf">Скачать методичку и образец (PDF)</a><a class="button" href="downloads/report-template.md">Скачать общий шаблон отчёта (Markdown)</a></div><article class="lesson"><h2>Магазин обуви «Пара»</h2><p>Приложение на основе БД учебной ПМ.11: каталог, клиентский заказ и функции сотрудников по ДЭ 2027.</p></article><article class="lesson" id="page-1"><p class="eyebrow"></p><h2>Исходная точка и карта решения</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-demo-source.zip">Скачать исходную БД и данные магазина «Пара»</a><br>Для демонстрационного разбора: импортируйте baseline.sql в новую пустую БД. Если ваша БД учебной практики готова, используйте её отдельную копию для своего варианта.</p><p class="block"><a class="button" href="downloads/ShopDb-starter.zip">Скачать заготовку WPF-приложения и ресурсы магазина</a><br>Начните после проверки своей БД: распакуйте и откройте starter/ShopDb.csproj. Это пустое приложение для разработки по методичке.</p><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><p class="block"><a class="button" href="downloads/ShopDb-demo.zip">Скачать демонстрационный проект «Пара» для сверки</a><br>Открывайте после самостоятельной реализации и проверки. Это пример демонстрационной области, а не решение своего варианта; локальных паролей в архиве нет.</p><section class="block text"><h3>Что построим</h3><p>На области магазина «Пара» создадим приложение с тремя окнами: каталогом и корзиной, карточкой товара, списком заказов. Repository выполняет только параметризованные CALL, SQL-процедуры проверяют роль и изменяют БД. Product и CartLine передают данные между слоями; корзина до подтверждения существует только в памяти приложения.</p></section><section class="block text"><h3>Почему нужен каждый слой</h3><p>Интерфейс собирает выбор пользователя, Repository переводит его в запрос, СУБД проверяет существование клиента, остаток и права и сохраняет результат. Затем приложение заново читает данные. Так сообщение «Заказ сохранён» опирается на сохранённый результат, а отмена корзины не требует удаления строк из БД.</p></section><section class="block text"><h3>Алгоритм</h3><p>Входные данные: клиент, позиции «модель + размер», количества. Сначала проверить ввод; при подтверждении проверить роль и ключ запроса; начать транзакцию; заблокировать позиции по возрастанию идентификатора; проверить остатки; рассчитать и сохранить цены; уменьшить остатки; зафиксировать; перечитать каталог. При ошибке откатить все изменения. Для скидки определить начало текущего месяца, вычесть календарный месяц, искать заказы в полуинтервале [начало прошлого; начало текущего).</p></section><section class="block text"><h3>Получите основу</h3><p>Скачать БД и CSV демонстрационного магазина «Пара» — прямая ссылка под заголовком этого раздела — это подготовленные материалы учебной ПМ.11. Скачать заготовку WPF и ресурсы ДЭ — прямая ссылка под заголовком этого раздела — источник пустого проекта, логотипа, иконки и заглушки. Скачать SQL для доработки исходной БД — прямая ссылка под заголовком этого раздела — код ниже относится к этим файлам. Скачать итоговый пример для последующей сверки — прямая ссылка под заголовком этого раздела — не заменяет построение решения.</p></section></div></article><article class="lesson" id="page-2"><p class="eyebrow"></p><h2>Проверка среды и создание рабочей копии</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-demo-source.zip">Скачать исходную БД и данные магазина «Пара»</a><br>Для демонстрационного разбора: импортируйте baseline.sql в новую пустую БД. Если ваша БД учебной практики готова, используйте её отдельную копию для своего варианта.</p><section class="block text"><h3>Запустите XAMPP</h3><p>Откройте XAMPP Control Panel. У уже установленного MySQL нажмите Start, если он остановлен; для phpMyAdmin требуется также Apache. Нажмите Admin возле MySQL. В верхней части phpMyAdmin запишите версию сервера и версию phpMyAdmin в отчёт. Здесь проверена MariaDB 10.4.32 и phpMyAdmin 5.2.1; она входит в установленный XAMPP и принимает приведённый SQL. Не путайте это с отдельным PostgreSQL.</p></section><section class="block text"><h3>Сохраните исходную БД</h3><p>В левой панели выберите собственную БД учебной ПМ.11 → Экспорт → Обычный → SQL. Включите структуру, данные, процедуры и функции; проверьте, что в предварительном списке отмечены только объекты этой БД. Выполните экспорт. Он нужен, чтобы воспроизвести исходное состояние независимо от текущих действий.</p></section><section class="block text"><h3>Восстановите копию</h3><p>Нажмите Создать в левой панели, задайте pp11_demo для демонстрации или pp11_vNN для своего варианта, выберите utf8mb4_bin → Создать. Выделите новую БД → Импорт → Выберите файл. Для демонстрации возьмите materials/demo/baseline.sql из исходного архива; для своего варианта — собственную резервную копию или baseline.sql из архива именно своего варианта. Формат SQL, кодировка utf-8 → Импорт. Архив не содержит команды USE: выбранная БД определяет место восстановления.</p></section><section class="block text"><h3>Проверьте исходные данные</h3><p>Откройте SQL у выбранной БД. Выполните SELECT COUNT(*) FROM product; аналогично size, stock_item, customer, sales_order, order_line. Затем SELECT SUM(available) FROM stock_item; SELECT SUM(total) FROM order_totals;. У «Пара» ожидаются 31, 35, 92, 20, 10, 30; 1274 и 341770.00 соответственно. Несовпадение сначала выясните по исходным данным, не компенсируйте удалением случайных строк. Исходный импорт повторно в заполненной БД не запускайте.</p></section><figure class="block screenshot"><h3>Реальный результат в phpMyAdmin</h3><img src="assets/screenshots/b21a9a5db655751a.png" alt="Настройка импорта исходной базы в отдельную pp11_browser. Снимок получен из реально открытого phpMyAdmin."><figcaption>Настройка импорта исходной базы в отдельную pp11_browser. Снимок получен из реально открытого phpMyAdmin.</figcaption></figure></div></article><article class="lesson" id="page-3"><p class="eyebrow"></p><h2>Как вводить SQL и проверять законченный объект</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Откройте место выполнения</h3><p>Из архива SQL распакуйте папку database. В Visual Studio можно открыть SQL через Файл → Открыть → Файл для чтения; выполнение производится в phpMyAdmin. Выделите рабочую БД в левой панели, откройте вкладку SQL. Вставляйте полный законченный файл с DELIMITER и нажимайте Вперёд. После успешного выполнения проверьте вкладку Процедуры: функция или процедура должна появиться.</p></section><section class="block text"><h3>Порядок фрагментов</h3><p>Ниже каждый файл объясняется логическими частями. Создайте файл с указанным именем, вставьте первый фрагмент, затем допишите следующие в конец, включая закрывающие строки. Части тела BEGIN…END по отдельности не выполняйте: объект готов после последнего фрагмента своего файла. ALTER TABLE и CREATE изменяют структуру сразу; ROLLBACK не отменяет DDL. Доработки выполняются только в учебной копии.</p></section><section class="block text"><h3>Проверка причины</h3><p>Задайте ожидаемый результат до запроса. Если цена отличается, проверьте календарные границы и реальные заказы именно модели; если операция отказала, проверьте роль, количество и текущий размерный остаток. После изменения повторите исходный случай и соседние случаи: это подтверждает и исправление, и сохранность остальных функций.</p></section></div></article><article class="lesson" id="page-4"><p class="eyebrow"></p><h2>Дополнительные учебные пользователи для проверки всех ролей</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/00_training_users.sql. Фрагмент 1 из 1 этого файла. Исходные варианты содержат только клиентов. Добавляем три явно учебных логина, чтобы сравнить клиентскую, менеджерскую и административную функции. INSERT…SELECT получает role_id по имени; NOT EXISTS сохраняет уже существующую запись. Это пользователи приложения, не учётные записи сервера.</p></section><section class="block code"><h3>Код: 00_training_users.sql</h3><pre>-- === Дополнительные учебные пользователи для проверки всех ролей
+INSERT INTO app_role(name) VALUES(&#x27;Клиент&#x27;),(&#x27;Менеджер&#x27;),(&#x27;Администратор&#x27;)
+ON DUPLICATE KEY UPDATE name=VALUES(name);
+INSERT INTO customer(login,last_name,first_name,patronymic,role_id)
+SELECT &#x27;pp_client&#x27;,&#x27;Учебный&#x27;,&#x27;Клиент&#x27;,&#x27;&#x27;,role_id FROM app_role
+WHERE name=&#x27;Клиент&#x27; AND NOT EXISTS(SELECT 1 FROM customer WHERE login=&#x27;pp_client&#x27;);
+INSERT INTO customer(login,last_name,first_name,patronymic,role_id)
+SELECT &#x27;pp_manager&#x27;,&#x27;Учебный&#x27;,&#x27;Менеджер&#x27;,&#x27;&#x27;,role_id FROM app_role
+WHERE name=&#x27;Менеджер&#x27; AND NOT EXISTS(SELECT 1 FROM customer WHERE login=&#x27;pp_manager&#x27;);
+INSERT INTO customer(login,last_name,first_name,patronymic,role_id)
+SELECT &#x27;pp_admin&#x27;,&#x27;Учебный&#x27;,&#x27;Администратор&#x27;,&#x27;&#x27;,role_id FROM app_role
+WHERE name=&#x27;Администратор&#x27; AND NOT EXISTS(SELECT 1 FROM customer WHERE login=&#x27;pp_admin&#x27;);</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После выполнения SELECT login FROM customer WHERE login LIKE &#x27;pp_%&#x27;; должен показать pp_client, pp_manager, pp_admin. Исходные 20 пользователей демонстрации сохраняются; всего теперь 23. В индивидуальном исходном наборе 2 клиента; после добавления всего 5.</p></section></div></article><article class="lesson" id="page-5"><p class="eyebrow"></p><h2>Миграция без изменения исторических цен</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/01_price.sql. Фрагмент 1 из 3 этого файла. request_key хранит идентификатор подтверждения, created_by — его автора. UNIQUE запрещает два заголовка с одним ключом. Новые поля nullable, поэтому исходные заказы не изменяют цену и не требуют фиктивных ключей.</p></section><section class="block code"><h3>Код: 01_price.sql</h3><pre>-- === Миграция без изменения исторических цен
+ALTER TABLE sales_order ADD COLUMN IF NOT EXISTS request_key CHAR(36) NULL;
+ALTER TABLE sales_order ADD COLUMN IF NOT EXISTS created_by BIGINT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_order_request ON sales_order(request_key);</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного файла откройте структуру sales_order; видны новые поля и уникальный индекс. SELECT SUM(total) FROM order_totals; по-прежнему возвращает 341770.00.</p></section></div></article><article class="lesson" id="page-6"><p class="eyebrow"></p><h2>Цена относительно календарного месяца</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/01_price.sql. Фрагмент 2 из 3 этого файла. DATE_SUB определяет первое число текущего и предыдущего месяца. EXISTS проверяет историю модели через размерные позиции, а не один размер. Полуинтервал исключает начало текущего месяца. Если заказов нет, цена умножается на 0.75; ROUND возвращает копейки.</p></section><section class="block code"><h3>Код: 01_price.sql</h3><pre>-- === Цена относительно календарного месяца
+DROP FUNCTION IF EXISTS pp_price;
+DELIMITER $$
+CREATE FUNCTION pp_price(p_product BIGINT,p_date DATE)
+RETURNS DECIMAL(12,2) READS SQL DATA SQL SECURITY DEFINER
+BEGIN
+ DECLARE v_start DATE;
+ DECLARE v_price DECIMAL(12,2);
+ SET v_start=DATE_SUB(p_date,INTERVAL DAYOFMONTH(p_date)-1 DAY);
+ SELECT p.price * IF(EXISTS(
+  SELECT 1 FROM order_line l JOIN stock_item s USING(item_id)
+  JOIN sales_order o USING(order_id)
+  WHERE s.product_id=p.product_id
+   AND o.ordered_at&gt;=DATE_SUB(v_start,INTERVAL 1 MONTH)
+   AND o.ordered_at&lt;v_start
+ ),1,0.75) INTO v_price FROM product p WHERE p.product_id=p_product;
+ RETURN ROUND(v_price,2);
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После последнего фрагмента выполните SELECT product_id,price,pp_price(product_id,CURDATE()) AS final_price FROM product;. При отсутствии заказов в прошлом месяце 101.00 превращается в 75.75. На январской дате проверяйте декабрь предыдущего года.</p></section></div></article><article class="lesson" id="page-7"><p class="eyebrow"></p><h2>Роль пользователя и роль подключения</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/01_price.sql. Фрагмент 3 из 3 этого файла. customer связан с app_role. USER() определяет фактическую учётную запись соединения: суффикс _client/_manager/_admin должен соответствовать роли пользователя. Поэтому клиентское подключение не сможет выдать себя за менеджера лишь подстановкой actor. root используется только администратором для настройки и SQL-проверки.</p></section><section class="block code"><h3>Код: 01_price.sql</h3><pre>-- === Роль пользователя и роль подключения
+DROP FUNCTION IF EXISTS pp_role;
+DELIMITER $$
+CREATE FUNCTION pp_role(p_actor BIGINT)
+RETURNS VARCHAR(20) READS SQL DATA SQL SECURITY DEFINER
+BEGIN
+ DECLARE v_role VARCHAR(20);
+ DECLARE v_account VARCHAR(80);
+ SELECT CASE r.name WHEN &#x27;Администратор&#x27; THEN &#x27;admin&#x27;
+  WHEN &#x27;Менеджер&#x27; THEN &#x27;manager&#x27; ELSE &#x27;client&#x27; END
+ INTO v_role FROM customer c JOIN app_role r USING(role_id)
+ WHERE c.customer_id=p_actor;
+ SET v_account=SUBSTRING_INDEX(USER(),&#x27;@&#x27;,1);
+ IF v_role IS NULL OR (v_account&lt;&gt;&#x27;root&#x27; AND
+  (v_account NOT LIKE &#x27;pp11\_%&#x27; OR
+   SUBSTRING_INDEX(v_account,&#x27;_&#x27;,-1)&lt;&gt;v_role)) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ RETURN v_role;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Полный файл завершён: выполните в SQL. Позднее проверяйте pp_role через процедуры реальными ограниченными подключениями; SET ROLE в root не подтверждает запрет.</p></section></div></article><article class="lesson" id="page-8"><p class="eyebrow"></p><h2>Контракт заказа и обработчик отката</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/02_checkout.sql. Фрагмент 1 из 3 этого файла. pp_checkout получает автора, клиента, JSON позиций и ключ. Курсор обходит объединённые позиции по item_id; единый порядок уменьшает конфликт блокировок. EXIT HANDLER при SQL-ошибке делает ROLLBACK, удаляет временную таблицу и передаёт ошибку вызывающему приложению.</p></section><section class="block code"><h3>Код: 02_checkout.sql</h3><pre>-- === Контракт заказа и обработчик отката
+DROP PROCEDURE IF EXISTS pp_checkout;
+DELIMITER $$
+CREATE PROCEDURE pp_checkout(IN p_actor BIGINT,IN p_customer BIGINT,
+ IN p_lines LONGTEXT,IN p_key CHAR(36)) SQL SECURITY DEFINER
+proc: BEGIN
+ DECLARE v_role VARCHAR(20);
+ DECLARE v_order BIGINT;
+ DECLARE v_creator BIGINT;
+ DECLARE v_item BIGINT;
+ DECLARE v_product BIGINT;
+ DECLARE v_quantity INT;
+ DECLARE v_available INT;
+ DECLARE v_price DECIMAL(12,2);
+ DECLARE v_date DATETIME;
+ DECLARE v_index INT DEFAULT 0;
+ DECLARE v_done INT DEFAULT 0;
+ DECLARE v_id_text TEXT;
+ DECLARE v_qty_text TEXT;
+ DECLARE cur CURSOR FOR SELECT item_id,quantity FROM pp_request ORDER BY item_id;
+ DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done=1;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION
+ BEGIN
+  ROLLBACK;
+  DROP TEMPORARY TABLE IF EXISTS pp_request;
+  RESIGNAL;
+ END;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Это начало процедуры, пока не выполняйте. Соберите файл до END и DELIMITER. Пример входного JSON: [{&quot;item_id&quot;:1,&quot;quantity&quot;:1}].</p></section></div></article><article class="lesson" id="page-9"><p class="eyebrow"></p><h2>Роль, повтор запроса и проверка входа</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/02_checkout.sql. Фрагмент 2 из 3 этого файла. Клиент оформляет только себе; сотрудник выбирает клиента. Уже сохранённый request_key возвращает прежний order_id тому же автору. Проверяются формат ключа, массив и положительные целые значения; повторяющиеся item_id объединяются. Временная таблица принадлежит отдельному соединению.</p></section><section class="block code"><h3>Код: 02_checkout.sql</h3><pre> -- === Роль, повтор запроса и проверка входа
+ SET v_role=pp_role(p_actor);
+ IF v_role=&#x27;client&#x27; AND p_customer&lt;&gt;p_actor THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ IF p_key IS NULL OR p_key NOT REGEXP
+  &#x27;^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$&#x27; THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;INVALID_REQUEST&#x27;;
+ END IF;
+ SET v_order=(SELECT order_id FROM sales_order WHERE request_key=p_key);
+ IF v_order IS NOT NULL THEN
+  SELECT created_by INTO v_creator FROM sales_order WHERE order_id=v_order;
+  IF v_creator&lt;&gt;p_actor THEN
+   SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+  END IF;
+  SELECT v_order AS created_order;
+  LEAVE proc;
+ END IF;
+ IF p_lines IS NULL OR JSON_VALID(p_lines)=0 THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;INVALID_LINES&#x27;;
+ END IF;
+ IF JSON_TYPE(p_lines)&lt;&gt;&#x27;ARRAY&#x27; OR JSON_LENGTH(p_lines)=0 THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;EMPTY_ORDER&#x27;;
+ END IF;
+ IF NOT EXISTS(SELECT 1 FROM customer WHERE customer_id=p_customer) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;UNKNOWN_CUSTOMER&#x27;;
+ END IF;
+ DROP TEMPORARY TABLE IF EXISTS pp_request;
+ CREATE TEMPORARY TABLE pp_request(item_id BIGINT PRIMARY KEY,
+  quantity INT NOT NULL) ENGINE=InnoDB;
+ WHILE v_index&lt;JSON_LENGTH(p_lines) DO
+  SET v_id_text=JSON_UNQUOTE(JSON_EXTRACT(p_lines,CONCAT(&#x27;$[&#x27;,v_index,&#x27;].item_id&#x27;)));
+  SET v_qty_text=JSON_UNQUOTE(JSON_EXTRACT(p_lines,CONCAT(&#x27;$[&#x27;,v_index,&#x27;].quantity&#x27;)));
+  IF v_id_text IS NULL OR v_qty_text IS NULL
+   OR v_id_text NOT REGEXP &#x27;^[1-9][0-9]{0,9}$&#x27;
+   OR v_qty_text NOT REGEXP &#x27;^[1-9][0-9]{0,5}$&#x27; THEN
+   SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;INVALID_QUANTITY&#x27;;
+  END IF;
+  INSERT INTO pp_request VALUES(CAST(v_id_text AS UNSIGNED),CAST(v_qty_text AS UNSIGNED))
+  ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity);
+  SET v_index=v_index+1;
+ END WHILE;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Продолжите файл. После его завершения проверьте пустой массив, количество 0 и неизвестного клиента: новые заказы и остатки не меняются.</p></section></div></article><article class="lesson" id="page-10"><p class="eyebrow"></p><h2>Сохранение цены и остатков одной транзакцией</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/02_checkout.sql. Фрагмент 3 из 3 этого файла. Время фиксируется один раз. Заголовок и строки находятся в одной транзакции; SELECT…FOR UPDATE блокирует конкретные остатки. pp_price вычисляет окончательную цену на дату заказа; unit_price сохраняет её как историю. COMMIT выполняется только после всех позиций. Исходная place_order остаётся для сопоставления учебной практики и не вызывается приложением.</p></section><section class="block code"><h3>Код: 02_checkout.sql</h3><pre> -- === Сохранение цены и остатков одной транзакцией
+ SET v_date=NOW();
+ START TRANSACTION;
+ INSERT INTO sales_order(customer_id,ordered_at,request_key,created_by)
+ VALUES(p_customer,v_date,p_key,p_actor);
+ SET v_order=LAST_INSERT_ID();
+ SET v_done=0;
+ OPEN cur;
+ read_loop: LOOP
+  FETCH cur INTO v_item,v_quantity;
+  IF v_done=1 THEN LEAVE read_loop; END IF;
+  SET v_available=NULL;
+  SELECT available,product_id INTO v_available,v_product
+  FROM stock_item WHERE item_id=v_item FOR UPDATE;
+  IF v_available IS NULL THEN
+   SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;UNKNOWN_ITEM&#x27;;
+  END IF;
+  IF v_available&lt;v_quantity THEN
+   SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;NOT_ENOUGH_STOCK&#x27;;
+  END IF;
+  SET v_price=pp_price(v_product,DATE(v_date));
+  INSERT INTO order_line(order_id,item_id,quantity,unit_price)
+  VALUES(v_order,v_item,v_quantity,v_price);
+  UPDATE stock_item SET available=available-v_quantity WHERE item_id=v_item;
+ END LOOP;
+ CLOSE cur;
+ COMMIT;
+ DROP TEMPORARY TABLE pp_request;
+ SELECT v_order AS created_order;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Файл завершён: выполните в phpMyAdmin. Затем получите customer_id для pp_client; CALL pp_checkout(id,id,&#x27;[{&quot;item_id&quot;:1,&quot;quantity&quot;:1}]&#x27;,UUID()); возвращает номер. Сверьте строку заказа, уменьшение остатка на 1 и цену; удаление проверяется после следующего файла.</p></section></div></article><article class="lesson" id="page-11"><p class="eyebrow"></p><h2>Отмена заказа с возвратом всех позиций</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/03_manage.sql. Фрагмент 1 из 3 этого файла. Роль должна быть manager или admin. Заголовок блокируется до изменения, строки обходятся в порядке item_id. Возврат количества и удаление заголовка выполняются в одной транзакции, строки удаляются по внешнему ключу CASCADE. Повторное удаление не возвращает товары вторично.</p></section><section class="block code"><h3>Код: 03_manage.sql</h3><pre>-- === Отмена заказа с возвратом всех позиций
+DROP PROCEDURE IF EXISTS pp_delete_order;
+DELIMITER $$
+CREATE PROCEDURE pp_delete_order(IN p_actor BIGINT,IN p_order BIGINT)
+SQL SECURITY DEFINER
+BEGIN
+ DECLARE v_id BIGINT;
+ DECLARE v_item BIGINT;
+ DECLARE v_qty INT;
+ DECLARE v_done INT DEFAULT 0;
+ DECLARE cur CURSOR FOR SELECT item_id,quantity FROM order_line
+  WHERE order_id=p_order ORDER BY item_id;
+ DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done=1;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ IF pp_role(p_actor) NOT IN (&#x27;manager&#x27;,&#x27;admin&#x27;) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ START TRANSACTION;
+ SET v_id=NULL;
+ SELECT order_id INTO v_id FROM sales_order WHERE order_id=p_order FOR UPDATE;
+ IF v_id IS NULL THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ORDER_NOT_FOUND&#x27;;
+ END IF;
+ SET v_done=0;
+ OPEN cur;
+ read_loop: LOOP
+  FETCH cur INTO v_item,v_qty;
+  IF v_done=1 THEN LEAVE read_loop; END IF;
+  UPDATE stock_item SET available=available+v_qty WHERE item_id=v_item;
+ END LOOP;
+ CLOSE cur;
+ DELETE FROM sales_order WHERE order_id=p_order;
+ COMMIT;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После всего файла сохраните число остатков, оформите небольшой заказ и удалите его через pp_delete_order от pp_manager. Остатки возвращаются к исходным; повторный вызов получает ORDER_NOT_FOUND и ничего не меняет.</p></section></div></article><article class="lesson" id="page-12"><p class="eyebrow"></p><h2>Удаление строки администратором</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/03_manage.sql. Фрагмент 2 из 3 этого файла. Администратор блокирует заголовок и выбранную строку. Возвращается ровно quantity этой строки. Когда строк больше нет, удаляется пустой заголовок; остальные заказы не затрагиваются.</p></section><section class="block code"><h3>Код: 03_manage.sql</h3><pre>-- === Удаление строки администратором
+DROP PROCEDURE IF EXISTS pp_delete_line;
+DELIMITER $$
+CREATE PROCEDURE pp_delete_line(IN p_actor BIGINT,IN p_order BIGINT,IN p_item BIGINT)
+SQL SECURITY DEFINER
+BEGIN
+ DECLARE v_id BIGINT;
+ DECLARE v_qty INT;
+ DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+ IF pp_role(p_actor)&lt;&gt;&#x27;admin&#x27; THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ START TRANSACTION;
+ SET v_id=(SELECT order_id FROM sales_order WHERE order_id=p_order FOR UPDATE);
+ SET v_qty=(SELECT quantity FROM order_line
+  WHERE order_id=p_order AND item_id=p_item FOR UPDATE);
+ IF v_id IS NULL OR v_qty IS NULL THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;LINE_NOT_FOUND&#x27;;
+ END IF;
+ UPDATE stock_item SET available=available+v_qty WHERE item_id=p_item;
+ DELETE FROM order_line WHERE order_id=p_order AND item_id=p_item;
+ IF NOT EXISTS(SELECT 1 FROM order_line WHERE order_id=p_order) THEN
+  DELETE FROM sales_order WHERE order_id=p_order;
+ END IF;
+ COMMIT;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного файла оформите заказ с двумя позициями, удалите первую pp_delete_line, сравните остатки обеих; удалите вторую и убедитесь, что заголовка больше нет. Клиентское и менеджерское подключения не получают EXECUTE этой процедуры.</p></section></div></article><article class="lesson" id="page-13"><p class="eyebrow"></p><h2>Изменение даты без пересчёта исторических цен</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/03_manage.sql. Фрагмент 3 из 3 этого файла. Администратор меняет ordered_at, но не unit_price. Будущая дата отклоняется. ROW_COUNT может быть 0 и при неизменившейся дате, поэтому существование заказа проверяется отдельно. Изменение истории может повлиять на текущую скидку каталога, но не на сохранённую цену заказа.</p></section><section class="block code"><h3>Код: 03_manage.sql</h3><pre>-- === Изменение даты без пересчёта исторических цен
+DROP PROCEDURE IF EXISTS pp_change_date;
+DELIMITER $$
+CREATE PROCEDURE pp_change_date(IN p_actor BIGINT,IN p_order BIGINT,IN p_date DATETIME)
+SQL SECURITY DEFINER
+BEGIN
+ IF pp_role(p_actor)&lt;&gt;&#x27;admin&#x27; THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ IF p_date IS NULL OR p_date&gt;NOW() THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;INVALID_DATE&#x27;;
+ END IF;
+ UPDATE sales_order SET ordered_at=p_date WHERE order_id=p_order;
+ IF ROW_COUNT()=0 AND NOT EXISTS(SELECT 1 FROM sales_order WHERE order_id=p_order) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ORDER_NOT_FOUND&#x27;;
+ END IF;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Файл завершён: выполните целиком. Измените дату созданного тестового заказа и сравните цену строки до/после. Проверяйте отказ на будущую дату и отсутствие побочных изменений.</p></section></div></article><article class="lesson" id="page-14"><p class="eyebrow"></p><h2>Каталог из БД с единой ценой и остатком</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/04_read.sql. Фрагмент 1 из 3 этого файла. LEFT JOIN сохраняет модель даже без размерных позиций; COALESCE возвращает ноль. SUM объединяет остатки всех размеров. GROUP BY включает все неагрегированные поля, поэтому запрос совместим с строгим режимом группировки. Приложение получает базовую и итоговую цену отдельно.</p></section><section class="block code"><h3>Код: 04_read.sql</h3><pre>-- === Каталог из БД с единой ценой и остатком
+DROP PROCEDURE IF EXISTS pp_catalog;
+DELIMITER $$
+CREATE PROCEDURE pp_catalog(IN p_date DATE) SQL SECURITY DEFINER
+BEGIN
+ SELECT p.product_id,p.name,c.category_id,c.name AS category,
+  m.name AS manufacturer,p.composition,p.description,p.image_path,
+  p.price,pp_price(p.product_id,p_date) AS final_price,
+  COALESCE(SUM(s.available),0) AS available
+ FROM product p JOIN subcategory sc USING(subcategory_id)
+ JOIN category c USING(category_id) JOIN manufacturer m USING(manufacturer_id)
+ LEFT JOIN stock_item s USING(product_id)
+ GROUP BY p.product_id,p.name,c.category_id,c.name,m.name,p.composition,
+  p.description,p.image_path,p.price ORDER BY p.product_id;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного файла CALL pp_catalog(CURDATE()); возвращает 31 модель «Пара», суммарные остатки совпадают с stock_item. Изображение находится по image_path, а отсутствие файла обрабатывает модель Product.</p></section><figure class="block screenshot"><h3>Реальный результат в phpMyAdmin</h3><img src="assets/screenshots/d1d50fbb9585f2d4.png" alt="Результат реального CALL pp_catalog(CURDATE()): исходная и итоговая цены, суммарные остатки."><figcaption>Результат реального CALL pp_catalog(CURDATE()): исходная и итоговая цены, суммарные остатки.</figcaption></figure></div></article><article class="lesson" id="page-15"><p class="eyebrow"></p><h2>Вход по логину и размерный ряд</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/04_read.sql. Фрагмент 2 из 3 этого файла. pp_login возвращает только пользователя выбранного логина и роль; пароль приложения по условию ДЭ не запрашивается. pp_sizes возвращает размерный ряд с текущими остатками; интерфейс разрешит добавление только положительных остатков.</p></section><section class="block code"><h3>Код: 04_read.sql</h3><pre>-- === Вход по логину и размерный ряд
+DROP PROCEDURE IF EXISTS pp_login;
+DROP PROCEDURE IF EXISTS pp_sizes;
+DELIMITER $$
+CREATE PROCEDURE pp_login(IN p_login VARCHAR(80)) SQL SECURITY DEFINER
+BEGIN
+ SELECT c.customer_id,CONCAT_WS(&#x27; &#x27;,c.last_name,c.first_name,
+  NULLIF(c.patronymic,&#x27;&#x27;)) AS fio,
+  CASE r.name WHEN &#x27;Администратор&#x27; THEN &#x27;admin&#x27;
+   WHEN &#x27;Менеджер&#x27; THEN &#x27;manager&#x27; ELSE &#x27;client&#x27; END AS role_name
+ FROM customer c JOIN app_role r USING(role_id) WHERE c.login=p_login;
+END$$
+CREATE PROCEDURE pp_sizes(IN p_product BIGINT) SQL SECURITY DEFINER
+BEGIN
+ SELECT s.item_id,z.label,s.available FROM stock_item s JOIN size z USING(size_id)
+ WHERE s.product_id=p_product ORDER BY z.size_id;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного файла CALL pp_login(&#x27;pp_client&#x27;); и CALL pp_sizes(1); возвращают пользователя и размеры модели. Для неизвестного логина результат пустой.</p></section></div></article><article class="lesson" id="page-16"><p class="eyebrow"></p><h2>Данные для работы сотрудников</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: database/04_read.sql. Фрагмент 3 из 3 этого файла. pp_customers даёт сотруднику выбор клиента. pp_orders вычисляет суммы из исторических цен, pp_lines раскрывает состав с производителем и размером. Проверка роли находится и в процедуре, и в приложении; прямой доступ к таблицам клиенту не требуется.</p></section><section class="block code"><h3>Код: 04_read.sql</h3><pre>-- === Данные для работы сотрудников
+DROP PROCEDURE IF EXISTS pp_customers;
+DROP PROCEDURE IF EXISTS pp_orders;
+DROP PROCEDURE IF EXISTS pp_lines;
+DELIMITER $$
+CREATE PROCEDURE pp_customers(IN p_actor BIGINT) SQL SECURITY DEFINER
+BEGIN
+ IF pp_role(p_actor) NOT IN (&#x27;manager&#x27;,&#x27;admin&#x27;) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ SELECT customer_id,CONCAT_WS(&#x27; &#x27;,last_name,first_name,NULLIF(patronymic,&#x27;&#x27;)) AS fio
+ FROM customer ORDER BY last_name,first_name,customer_id;
+END$$
+CREATE PROCEDURE pp_orders(IN p_actor BIGINT) SQL SECURITY DEFINER
+BEGIN
+ IF pp_role(p_actor) NOT IN (&#x27;manager&#x27;,&#x27;admin&#x27;) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ SELECT o.order_id,o.ordered_at,
+  CONCAT_WS(&#x27; &#x27;,c.last_name,c.first_name,NULLIF(c.patronymic,&#x27;&#x27;)) AS fio,
+  COALESCE(SUM(l.quantity*l.unit_price),0) AS total
+ FROM sales_order o JOIN customer c USING(customer_id)
+ LEFT JOIN order_line l USING(order_id)
+ GROUP BY o.order_id,o.ordered_at,c.last_name,c.first_name,c.patronymic
+ ORDER BY o.ordered_at DESC,o.order_id DESC;
+END$$
+CREATE PROCEDURE pp_lines(IN p_actor BIGINT,IN p_order BIGINT) SQL SECURITY DEFINER
+BEGIN
+ IF pp_role(p_actor) NOT IN (&#x27;manager&#x27;,&#x27;admin&#x27;) THEN
+  SIGNAL SQLSTATE &#x27;45000&#x27; SET MESSAGE_TEXT=&#x27;ROLE_DENIED&#x27;;
+ END IF;
+ SELECT l.item_id,CONCAT(p.name,&#x27; / &#x27;,m.name,&#x27; / &#x27;,z.label) AS position,
+  l.quantity,l.unit_price,l.quantity*l.unit_price AS total
+ FROM order_line l JOIN stock_item s USING(item_id) JOIN product p USING(product_id)
+ JOIN manufacturer m USING(manufacturer_id) JOIN size z USING(size_id)
+ WHERE l.order_id=p_order ORDER BY l.item_id;
+END$$
+DELIMITER ;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Файл завершён: выполните. Получите customer_id учебного менеджера и проверьте CALL pp_orders(id);. Каталог и список берутся из одной БД, а не из локального JSON.</p></section></div></article><article class="lesson" id="page-17"><p class="eyebrow"></p><h2>Создание ограниченных подключений СУБД</h2><div class="blocks"><section class="block text"><h3>Точные действия в phpMyAdmin</h3><p>Вернитесь на уровень сервера → Учётные записи пользователей → Добавить учётную запись пользователя. Имя pp11_demo_login, хост localhost (Локальный), пароль задайте локально. Не выбирайте создание БД с именем пользователя и не отмечайте глобальные привилегии. Нажмите Вперёд. Аналогично создайте pp11_demo_client, pp11_demo_manager, pp11_demo_admin с собственными паролями. Если имя уже существует, сначала проверьте, кому оно принадлежит; не удаляйте чужую учётную запись.</p></section><section class="block text"><h3>Почему четыре подключения</h3><p>Пользователь приложения входит по учебному логину. Соединение с MySQL использует отдельную учётную запись и пароль. Разные EXECUTE ограничивают именно возможности подключения: клиенту не разрешена процедура редактирования даты, даже если вызвать её вне окна. Суффиксы имён _client/_manager/_admin дополнительно сопоставляются с ролью actor функцией pp_role.</p></section><section class="block text"><h3>Граница учебного входа</h3><p>По условию ДЭ вход происходит без пароля приложения. Пользователь, знающий другой учебный логин, может выбрать его; локальный desktop-проект содержит параметры всех учебных подключений. Поэтому этот сценарий показывает работу прав СУБД и проверок роли, но не заменяет серверную аутентификацию реальной торговой системы. Пароли подключений не публикуйте.</p></section><figure class="block screenshot"><h3>Реальный результат в phpMyAdmin</h3><img src="assets/screenshots/7ba94060c37aade9.png" alt="Учебные роли пользователей приложения после миграции. Это customer/app_role, а не список учётных записей сервера."><figcaption>Учебные роли пользователей приложения после миграции. Это customer/app_role, а не список учётных записей сервера.</figcaption></figure></div></article><article class="lesson" id="page-18"><p class="eyebrow"></p><h2>Разрешения для уже созданных локальных учётных записей</h2><div class="blocks"><p class="block"><a class="button" href="downloads/pm11-migrations.zip">Скачать SQL доработки БД для приложения и заказов</a><br>Используйте после восстановления исходной БД. Изучайте и выполняйте файлы 00–05 по методичке; права выдаются после создания локальных учётных записей.</p><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: database/05_access.sql. Фрагмент 1 из 1 этого файла. GRANT выдаёт EXECUTE отдельной процедуре, а не все права на БД. login получает только вход/каталог/размеры, клиент — дополнительно подтверждение, менеджер — операции со списком и целым заказом, администратор — ещё строки и дату. Для своего варианта заменяйте pp11_demo и четыре имени пользователей согласованно.</p></section><section class="block code"><h3>Код: 05_access.sql</h3><pre>-- === Разрешения для уже созданных локальных учётных записей
+-- Выполняйте администратором; замените pp11_demo на имя своей учебной копии.
+-- Пароли задавайте в phpMyAdmin, а не в этом файле или репозитории.
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_login TO &#x27;pp11_demo_login&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_catalog TO &#x27;pp11_demo_login&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_sizes TO &#x27;pp11_demo_login&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_catalog TO &#x27;pp11_demo_client&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_sizes TO &#x27;pp11_demo_client&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_checkout TO &#x27;pp11_demo_client&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_catalog TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_sizes TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_checkout TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_customers TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_orders TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_lines TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_delete_order TO &#x27;pp11_demo_manager&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_catalog TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_sizes TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_checkout TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_customers TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_orders TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_lines TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_delete_order TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_delete_line TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;
+GRANT EXECUTE ON PROCEDURE pp11_demo.pp_change_date TO &#x27;pp11_demo_admin&#x27;@&#x27;localhost&#x27;;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После создания четырёх учётных записей и выполнения файла войдите в phpMyAdmin под pp11_demo_client: каталог и pp_checkout разрешены, SELECT FROM customer и UPDATE stock_item запрещены. Под менеджером pp_change_date запрещена.</p></section></div></article><article class="lesson" id="page-19"><p class="eyebrow"></p><h2>Создание и открытие проекта в Visual Studio</h2><div class="blocks"><p class="block"><a class="button" href="downloads/ShopDb-starter.zip">Скачать заготовку WPF-приложения и ресурсы магазина</a><br>Начните после проверки своей БД: распакуйте и откройте starter/ShopDb.csproj. Это пустое приложение для разработки по методичке.</p><p class="block"><a class="button" href="downloads/documentation-links.html">Открыть справочник ссылок на документацию WPF и MySqlConnector</a><br>Страница с прямыми ссылками на первичные руководства Microsoft и автора драйвера; используйте при настройке среды и изучении доступа к данным.</p><section class="block text"><h3>Начать с заготовки</h3><p>Скачать пустой WPF-проект и ресурсы — прямая ссылка под заголовком этого раздела — распакуйте архив в свою рабочую папку. В Visual Studio 2026: Файл → Открыть → Проект или решение → starter/ShopDb.csproj. В Обозревателе решений должны быть App.xaml и MainWindow.xaml. Заготовка уже содержит оригинальные ресурсы из приложения 2 КИМ и ссылку MySqlConnector 2.5.0.</p></section><section class="block text"><h3>Если создаёте проект самостоятельно</h3><p>На стартовом экране выберите Создание проекта. Введите WPF, язык C#, шаблон Приложение WPF, название ShopDb, платформа .NET 10.0. На этой основе пространство имён будет ShopDb. Добавьте папки Assets и Assets/Images через проект → Добавить → Новая папка; из заготовки через Добавить → Существующий элемент добавьте logo.png, shop.ico, picture.png и изображения моделей. Для logo.png и shop.ico в Свойствах задайте Действие при сборке: Ресурс — они загружаются из XAML. Для picture.png и Images задайте Действие при сборке: Нет, Копировать в выходной каталог: Копировать, если новее — они читаются по пути файла. Эти настройки также приведены в csproj.</p></section><section class="block text"><h3>Зависимость</h3><p>Правой кнопкой на проекте → Управление пакетами NuGet → Установлено: проверьте MySqlConnector 2.5.0. В проверенной среде он уже доступен. Если в учебной среде пакета нет, подготовьте его с преподавателем до запуска; затем Обзор → MySqlConnector → версия 2.5.0 → Установить. В .csproj PackageReference ниже фиксирует версию.</p></section><section class="block text"><h3>Проверка заготовки</h3><p>Сборка → Собрать решение. Затем Ctrl+F5: появляется пустое окно с текстом «Создайте приложение по методичке». Закройте только это окно. Это подтверждает WPF и ресурсы до подключения БД. Файлы bin и obj созданы автоматически и не редактируются.</p></section><section class="block text"><h3>Документация</h3><p>Откройте справочник ссылок на документацию под заголовком этого раздела. Руководство Microsoft поясняет шаблон WPF и элементы среды; руководство MySqlConnector объясняет Connection, Command и параметры.</p></section></div></article><article class="lesson" id="page-20"><p class="eyebrow"></p><h2>Настройка файла проекта</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/ShopDb.csproj. Фрагмент 1 из 1 этого файла. Правой кнопкой на проекте → Изменить файл проекта. TargetFramework задаёт .NET 10 для Windows, UseWPF включает WPF, ApplicationIcon указывает иконку. None Update копирует локальную конфигурацию и ресурсы при сборке. PackageReference подключает установленный драйвер. Сохраните и проверьте сборку пустой заготовки.</p></section><section class="block code"><h3>Код: ShopDb.csproj</h3><pre>&lt;Project Sdk=&quot;Microsoft.NET.Sdk&quot;&gt;
+  &lt;PropertyGroup&gt;
+    &lt;OutputType&gt;WinExe&lt;/OutputType&gt;
+    &lt;TargetFramework&gt;net10.0-windows&lt;/TargetFramework&gt;
+    &lt;UseWPF&gt;true&lt;/UseWPF&gt;
+    &lt;Nullable&gt;enable&lt;/Nullable&gt;
+    &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;
+    &lt;ApplicationIcon&gt;Assets\shop.ico&lt;/ApplicationIcon&gt;
+  &lt;/PropertyGroup&gt;
+  &lt;ItemGroup&gt;
+    &lt;PackageReference Include=&quot;MySqlConnector&quot; Version=&quot;2.5.0&quot; /&gt;
+    &lt;None Update=&quot;settings.local.json&quot; CopyToOutputDirectory=&quot;PreserveNewest&quot; /&gt;
+    &lt;None Update=&quot;Assets\**\*&quot; CopyToOutputDirectory=&quot;PreserveNewest&quot; /&gt;
+    &lt;None Remove=&quot;Assets\logo.png;Assets\shop.ico&quot; /&gt;
+    &lt;Resource Include=&quot;Assets\logo.png;Assets\shop.ico&quot; /&gt;
+  &lt;/ItemGroup&gt;
+&lt;/Project&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Сохраните файл. Сборка после завершения связанного блока должна пройти без ошибок.</p></section></div></article><article class="lesson" id="page-21"><p class="eyebrow"></p><h2>Общие ресурсы и оформление окон</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/App.xaml. Фрагмент 1 из 1 этого файла. В Обозревателе решений откройте App.xaml; замените ресурсы приложения. Window задаёт Calibri, основной белый фон, Button — акцент #70B2AF, DataGrid — режим чтения. StartupUri открывает MainWindow. Дополнительный фон #D2F6E7 используется в окнах. Дизайн соответствует руководству приложения 3 КИМ 2027.</p></section><section class="block code"><h3>Код: App.xaml</h3><pre>&lt;Application x:Class=&quot;ShopDb.App&quot;
+ xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+ xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+ StartupUri=&quot;MainWindow.xaml&quot;&gt;
+ &lt;Application.Resources&gt;
+  &lt;Style TargetType=&quot;Window&quot;&gt;
+   &lt;Setter Property=&quot;FontFamily&quot; Value=&quot;Calibri&quot; /&gt;
+   &lt;Setter Property=&quot;FontSize&quot; Value=&quot;16&quot; /&gt;
+   &lt;Setter Property=&quot;Language&quot; Value=&quot;ru-RU&quot; /&gt;
+   &lt;Setter Property=&quot;Background&quot; Value=&quot;White&quot; /&gt;
+  &lt;/Style&gt;
+  &lt;Style TargetType=&quot;Button&quot;&gt;
+   &lt;Setter Property=&quot;Background&quot; Value=&quot;#70B2AF&quot; /&gt;
+   &lt;Setter Property=&quot;Padding&quot; Value=&quot;12,7&quot; /&gt;
+   &lt;Setter Property=&quot;Margin&quot; Value=&quot;4&quot; /&gt;
+  &lt;/Style&gt;
+  &lt;Style TargetType=&quot;DataGrid&quot;&gt;
+   &lt;Setter Property=&quot;AutoGenerateColumns&quot; Value=&quot;False&quot; /&gt;
+   &lt;Setter Property=&quot;IsReadOnly&quot; Value=&quot;True&quot; /&gt;
+   &lt;Setter Property=&quot;CanUserAddRows&quot; Value=&quot;False&quot; /&gt;
+   &lt;Setter Property=&quot;RowHeaderWidth&quot; Value=&quot;0&quot; /&gt;
+  &lt;/Style&gt;
+ &lt;/Application.Resources&gt;
+&lt;/Application&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Сохраните файл. Сборка после завершения связанного блока должна пройти без ошибок.</p></section></div></article><article class="lesson" id="page-22"><p class="eyebrow"></p><h2>Запуск приложения</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/App.xaml.cs. Фрагмент 1 из 1 этого файла. Откройте App.xaml.cs под App.xaml. Сохраняется стандартный наследник Application, который связывает класс ShopDb.App с XAML. Никакого ручного изменения сгенерированного InitializeComponent здесь не нужно.</p></section><section class="block code"><h3>Код: App.xaml.cs</h3><pre>using System.Windows;
+namespace ShopDb;
+public partial class App : Application
+{
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Сохраните файл. Сборка после завершения связанного блока должна пройти без ошибок.</p></section></div></article><article class="lesson" id="page-23"><p class="eyebrow"></p><h2>Локальные настройки и проверка ресурсов</h2><div class="blocks"><p class="block"><a class="button" href="downloads/ShopDb-starter.zip">Скачать заготовку WPF-приложения и ресурсы магазина</a><br>Начните после проверки своей БД: распакуйте и откройте starter/ShopDb.csproj. Это пустое приложение для разработки по методичке.</p><section class="block text"><h3>Создайте settings.local.json</h3><p>В Обозревателе решений правой кнопкой по settings.example.json → Копировать, правой кнопкой по проекту → Вставить, переименуйте копию в settings.local.json. Введите реальные локальные пароли четырёх учётных записей СУБД. Для своей БД замените имя pp11_demo в Database и User ID, сохраняя требуемые суффиксы. Company — название вашей организации. settings.example.json оставьте с подсказками без паролей.</p></section><section class="block text"><h3>Проверьте копирование</h3><p>Выделите settings.local.json → Свойства → Копировать в выходной каталог: Копировать, если новее. Это также задано в csproj. После сборки откройте папку bin/Debug/net10.0-windows: там должны быть settings.local.json и Assets. Не добавляйте локальную конфигурацию в публичный репозиторий. При ошибке JSON проверьте запятые и двойные кавычки.</p></section><section class="block text"><h3>Имя файла изображения</h3><p>Поле image_path исходной БД указывает Images/имя.png. Product берёт имя файла и ищет его только в Assets/Images. Если изображение отсутствует, используется picture.png; оригинальное изображение не рисуйте заново. Файл logo.png из ресурсов показывается с сохранением пропорций, shop.ico задаёт иконку.</p></section></div></article><article class="lesson" id="page-24"><p class="eyebrow"></p><h2>Образец локальных настроек</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/settings.example.json. Фрагмент 1 из 1 этого файла. Образец JSON. Заполните именно копию settings.local.json. Company влияет на заголовки окон; четыре подключения соответствуют ключам login/client/manager/admin. Значения ЗАМЕНИТЕ_ЛОКАЛЬНО являются подсказками, а не паролями. После заполнения проверьте копирование файла при сборке.</p></section><section class="block code"><h3>Код: settings.example.json</h3><pre>{
+  &quot;Company&quot;: &quot;Магазин «Пара»&quot;,
+  &quot;Connections&quot;: {
+    &quot;login&quot;: &quot;Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_login;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5&quot;,
+    &quot;client&quot;: &quot;Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_client;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5&quot;,
+    &quot;manager&quot;: &quot;Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_manager;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5&quot;,
+    &quot;admin&quot;: &quot;Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_admin;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5&quot;
+  }
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Сохраните файл. Сборка после завершения связанного блока должна пройти без ошибок.</p></section></div></article><article class="lesson" id="page-25"><p class="eyebrow"></p><h2>Настройки и пользователь приложения</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/Models.cs. Фрагмент 1 из 2 этого файла. Settings хранит название компании и подключения по ролям. AppUser представляет именно пользователя торговой системы; IsStaff и IsAdmin вычисляются из его роли. Ключ login означает гостевое подключение и поиск логина, а не роль клиента.</p></section><section class="block code"><h3>Код: Models.cs</h3><pre>using System.IO;
+namespace ShopDb;
+// === Настройки и пользователь приложения
+public sealed class Settings
+{
+    public string Company { get; set; } = &quot;Магазин «Пара»&quot;;
+    public Dictionary&lt;string, string&gt; Connections { get; set; } = new();
+}
+public sealed record AppUser(long Id, string Fio, string Role)
+{
+    public bool IsStaff =&gt; Role is &quot;manager&quot; or &quot;admin&quot;;
+    public bool IsAdmin =&gt; Role == &quot;admin&quot;;
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Создайте Models.cs через контекстное меню проекта → Добавить → Класс. Замените автоматически созданный класс указанным фрагментом, затем допишите остальные типы в этот же файл. Сборка после полного Models.cs не требует БД.</p></section></div></article><article class="lesson" id="page-26"><p class="eyebrow"></p><h2>Модель каталога и товарная позиция</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/Models.cs. Фрагмент 2 из 2 этого файла. Product содержит поля модели, суммарный остаток и две цены. StockLabel и LowStock напрямую выражают границы задания. Picture берёт только имя файла и ищет его в Assets/Images: путь из БД не даёт читать произвольные файлы. SizeItem относится к сочетанию модели и размера, CartLine сохраняет предварительную цену корзины.</p></section><section class="block code"><h3>Код: Models.cs</h3><pre>// === Модель каталога и товарная позиция
+public sealed record Product(long Id, string Name, long CategoryId, string Category,
+    string Manufacturer, string Composition, string Description, string ImagePath,
+    decimal Price, decimal FinalPrice, int Available)
+{
+    public string StockLabel =&gt; Available &gt; 5 ? &quot;много&quot; : &quot;мало&quot;;
+    public bool LowStock =&gt; Available &lt;= 3;
+    public string Picture
+    {
+        get
+        {
+            string path = Path.Combine(AppContext.BaseDirectory, &quot;Assets&quot;, &quot;Images&quot;,
+                Path.GetFileName(ImagePath));
+            return File.Exists(path) ? path : Path.Combine(AppContext.BaseDirectory,
+                &quot;Assets&quot;, &quot;picture.png&quot;);
+        }
+    }
+}
+public sealed record SizeItem(long ItemId, string Label, int Available)
+{
+    public string Display =&gt; $&quot;{Label} — доступно {Available}&quot;;
+}
+public sealed record Choice(long Id, string Name);
+public sealed record CartLine(long ItemId, string Position, int Quantity, decimal Price)
+{
+    public decimal Total =&gt; Quantity * Price;
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Закончите Models.cs и сохраните. Сборка → Собрать решение. Для отсутствующего image_path должен выбираться Assets/picture.png. Изменение Quantity создаёт новую CartLine, чтобы обновить отображение.</p></section></div></article><article class="lesson" id="page-27"><p class="eyebrow"></p><h2>Локальная конфигурация и параметризованная команда</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/Repository.cs. Фрагмент 1 из 4 этого файла. Создайте Repository.cs через Добавить → Класс. Settings читается из каталога исполняемого приложения. Query открывает новое соединение выбранной роли; await не блокирует ожиданием серверного ответа интерфейс. AddWithValue передаёт значения отдельно от SQL, поэтому введённая кавычка не превращается в часть команды. DataTable превращает результат CALL в таблицу данных.</p></section><section class="block code"><h3>Код: Repository.cs</h3><pre>using System.Data;
+using System.IO;
+using System.Text.Json;
+using MySqlConnector;
+namespace ShopDb;
+public sealed class Repository
+{
+    // === Локальная конфигурация и параметризованная команда
+    public Settings Settings { get; }
+    public AppUser? User { get; private set; }
+    private string Role =&gt; User?.Role ?? &quot;login&quot;;
+    public Repository()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, &quot;settings.local.json&quot;);
+        Settings = JsonSerializer.Deserialize&lt;Settings&gt;(File.ReadAllText(path))
+            ?? throw new InvalidOperationException(&quot;Не заполнены настройки подключения.&quot;);
+        foreach (string key in new[] { &quot;login&quot;, &quot;client&quot;, &quot;manager&quot;, &quot;admin&quot; })
+        {
+            if (!Settings.Connections.ContainsKey(key))
+            {
+                throw new InvalidOperationException($&quot;В настройках отсутствует подключение {key}.&quot;);
+            }
+        }
+    }
+    private async Task&lt;DataTable&gt; Query(string sql, params (string Name, object Value)[] values)
+    {
+        await using var connection = new MySqlConnection(Settings.Connections[Role]);
+        await connection.OpenAsync();
+        await using var command = new MySqlCommand(sql, connection);
+        command.CommandTimeout = 15;
+        foreach (var value in values)
+        {
+            command.Parameters.AddWithValue(value.Name, value.Value);
+        }
+        await using var reader = await command.ExecuteReaderAsync();
+        var table = new DataTable();
+        table.Load(reader);
+        return table;
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Допишите остальные части класса перед финальной закрывающей скобкой. На этой части класс ещё не завершён. После полного файла сборка подтверждает типы, а подключение проверяется при запуске каталога.</p></section></div></article><article class="lesson" id="page-28"><p class="eyebrow"></p><h2>Вход и чтение каталога</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/Repository.cs. Фрагмент 2 из 4 этого файла. Login сначала сбрасывает старого пользователя, выполняет pp_login гостевым подключением и проверяет ровно одну строку. Catalog и Sizes преобразуют DataRow в понятные типы модели; цена приходит из SQL, отдельно в C# алгоритм скидки не дублируется.</p></section><section class="block code"><h3>Код: Repository.cs</h3><pre>    // === Вход и чтение каталога
+    public async Task Login(string login)
+    {
+        User = null;
+        DataTable table = await Query(&quot;CALL pp_login(@login)&quot;, (&quot;@login&quot;, login.Trim()));
+        if (table.Rows.Count != 1)
+        {
+            throw new InvalidOperationException(&quot;Логин не найден. Проверьте написание по данным своего варианта.&quot;);
+        }
+        DataRow row = table.Rows[0];
+        User = new AppUser(Convert.ToInt64(row[&quot;customer_id&quot;]),
+            Convert.ToString(row[&quot;fio&quot;])!, Convert.ToString(row[&quot;role_name&quot;])!);
+    }
+    public void Logout() =&gt; User = null;
+    public async Task&lt;List&lt;Product&gt;&gt; Catalog()
+    {
+        DataTable table = await Query(&quot;CALL pp_catalog(@date)&quot;, (&quot;@date&quot;, DateTime.Today));
+        return table.Rows.Cast&lt;DataRow&gt;().Select(row =&gt; new Product(
+            Convert.ToInt64(row[&quot;product_id&quot;]), (string)row[&quot;name&quot;],
+            Convert.ToInt64(row[&quot;category_id&quot;]), (string)row[&quot;category&quot;],
+            (string)row[&quot;manufacturer&quot;], (string)row[&quot;composition&quot;],
+            (string)row[&quot;description&quot;], (string)row[&quot;image_path&quot;],
+            (decimal)row[&quot;price&quot;], (decimal)row[&quot;final_price&quot;],
+            Convert.ToInt32(row[&quot;available&quot;]))).ToList();
+    }
+    public async Task&lt;List&lt;SizeItem&gt;&gt; Sizes(long product)
+    {
+        DataTable table = await Query(&quot;CALL pp_sizes(@product)&quot;, (&quot;@product&quot;, product));
+        return table.Rows.Cast&lt;DataRow&gt;().Select(row =&gt; new SizeItem(
+            Convert.ToInt64(row[&quot;item_id&quot;]), (string)row[&quot;label&quot;],
+            Convert.ToInt32(row[&quot;available&quot;]))).ToList();
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного Repository и подключения окна войдите по pp_client; ввод логина вида pp_client&#x27; OR 1=1 -- не должен давать вход. В каталоге сравните количество моделей и цены с CALL pp_catalog(CURDATE()).</p></section></div></article><article class="lesson" id="page-29"><p class="eyebrow"></p><h2>Заказ клиента и выбор клиента сотрудником</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/Repository.cs. Фрагмент 3 из 4 этого файла. Actor требует входа. Customers для клиента возвращает только самого пользователя, сотруднику вызывает разрешённую процедуру. Checkout сериализует идентификаторы и количества, но не доверяет переданной из UI цене: её вычисляет сервер. Один и тот же requestKey используется при повторе неизвестного сетевого результата.</p></section><section class="block code"><h3>Код: Repository.cs</h3><pre>    // === Заказ клиента и выбор клиента сотрудником
+    private AppUser Actor =&gt; User ?? throw new InvalidOperationException(&quot;Сначала войдите по логину.&quot;);
+    private void Staff()
+    {
+        if (!Actor.IsStaff)
+        {
+            throw new InvalidOperationException(&quot;Список заказов доступен менеджеру и администратору.&quot;);
+        }
+    }
+    public async Task&lt;List&lt;Choice&gt;&gt; Customers()
+    {
+        if (!Actor.IsStaff)
+        {
+            return new List&lt;Choice&gt; { new(Actor.Id, Actor.Fio) };
+        }
+        DataTable table = await Query(&quot;CALL pp_customers(@actor)&quot;, (&quot;@actor&quot;, Actor.Id));
+        return table.Rows.Cast&lt;DataRow&gt;().Select(row =&gt; new Choice(
+            Convert.ToInt64(row[&quot;customer_id&quot;]), (string)row[&quot;fio&quot;])).ToList();
+    }
+    public async Task&lt;long&gt; Checkout(long customer, IEnumerable&lt;CartLine&gt; lines, string key)
+    {
+        string json = JsonSerializer.Serialize(lines.Select(line =&gt; new
+        {
+            item_id = line.ItemId,
+            quantity = line.Quantity
+        }));
+        DataTable table = await Query(&quot;CALL pp_checkout(@actor,@customer,@lines,@key)&quot;,
+            (&quot;@actor&quot;, Actor.Id), (&quot;@customer&quot;, customer), (&quot;@lines&quot;, json), (&quot;@key&quot;, key));
+        return Convert.ToInt64(table.Rows[0][&quot;created_order&quot;]);
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного решения сравните customer_id сохранённого заказа с выбранным клиентом; у клиента выбор заблокирован, менеджеру доступны учебные пользователи. Не помещайте START TRANSACTION вокруг CALL: процедура сама владеет транзакцией.</p></section></div></article><article class="lesson" id="page-30"><p class="eyebrow"></p><h2>Управление заказами через ограниченные процедуры</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/Repository.cs. Фрагмент 4 из 4 этого файла. Staff и Admin защищают вход в методы до запроса. SQL-процедура и права фактического подключения проверяют действие повторно. Orders/Lines возвращают таблицы для DataGrid; Delete/ChangeDate не редактируют таблицы напрямую.</p></section><section class="block code"><h3>Код: Repository.cs</h3><pre>    // === Управление заказами через ограниченные процедуры
+    public Task&lt;DataTable&gt; Orders()
+    {
+        Staff();
+        return Query(&quot;CALL pp_orders(@actor)&quot;, (&quot;@actor&quot;, Actor.Id));
+    }
+    public Task&lt;DataTable&gt; Lines(long order)
+    {
+        Staff();
+        return Query(&quot;CALL pp_lines(@actor,@order)&quot;, (&quot;@actor&quot;, Actor.Id), (&quot;@order&quot;, order));
+    }
+    public Task&lt;DataTable&gt; DeleteOrder(long order)
+    {
+        Staff();
+        return Query(&quot;CALL pp_delete_order(@actor,@order)&quot;, (&quot;@actor&quot;, Actor.Id), (&quot;@order&quot;, order));
+    }
+    private void Admin()
+    {
+        if (!Actor.IsAdmin)
+        {
+            throw new InvalidOperationException(&quot;Это действие доступно только администратору.&quot;);
+        }
+    }
+    public Task&lt;DataTable&gt; DeleteLine(long order, long item)
+    {
+        Admin();
+        return Query(&quot;CALL pp_delete_line(@actor,@order,@item)&quot;,
+            (&quot;@actor&quot;, Actor.Id), (&quot;@order&quot;, order), (&quot;@item&quot;, item));
+    }
+    public Task&lt;DataTable&gt; ChangeDate(long order, DateTime date)
+    {
+        Admin();
+        return Query(&quot;CALL pp_change_date(@actor,@order,@date)&quot;,
+            (&quot;@actor&quot;, Actor.Id), (&quot;@order&quot;, order), (&quot;@date&quot;, date));
+    }
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Закончите Repository.cs. Сборка должна пройти вместе с Models.cs. На поздней проверке нажатию удалить должна соответствовать одна вызванная процедура; запрет для менеджера должен сохраняться и вне интерфейса.</p></section></div></article><article class="lesson" id="page-31"><p class="eyebrow"></p><h2>Понятное сообщение без строки подключения</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/Ui.cs. Фрагмент 1 из 1 этого файла. Создайте Ui.cs. Run выполняет асинхронное действие и переводит характерные SQL-ошибки в понятные инструкции. Пароль, серверная строка подключения и полный технический текст ошибки не показываются. Confirm использует предупреждение и выбор Да/Нет до удаления.</p></section><section class="block code"><h3>Код: Ui.cs</h3><pre>using System.Windows;
+using MySqlConnector;
+namespace ShopDb;
+public static class Ui
+{
+    // === Понятное сообщение без строки подключения
+    public static async Task Run(Window owner, Func&lt;Task&gt; action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (MySqlException error)
+        {
+            string text = error.Message.Contains(&quot;NOT_ENOUGH_STOCK&quot;)
+                ? &quot;Остаток изменился. Обновите каталог и уменьшите количество в заказе.&quot;
+                : error.Message.Contains(&quot;ROLE_DENIED&quot;) || error.Number == 1370
+                ? &quot;Действие запрещено для этой роли. Войдите с разрешённым логином.&quot;
+                : error.Message.Contains(&quot;NOT_FOUND&quot;)
+                ? &quot;Заказ или строка уже удалены. Обновите список заказов.&quot;
+                : error.Message.Contains(&quot;INVALID_DATE&quot;)
+                ? &quot;Дата не должна находиться в будущем. Выберите корректную дату.&quot;
+                : error.Number == 1213 || error.Number == 1205
+                ? &quot;Данные сейчас изменяет другой пользователь. Повторите операцию с тем же заказом.&quot;
+                : &quot;Не удалось выполнить операцию с БД. Проверьте запуск MySQL, имя БД и локальные настройки. При неясном результате подтверждения повторите запрос, не изменяя корзину.&quot;;
+            MessageBox.Show(owner, text, &quot;Ошибка операции&quot;, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception error)
+        {
+            string text = error is InvalidOperationException or ArgumentException
+                ? error.Message
+                : &quot;Проверьте settings.local.json и файлы ресурсов, затем повторите запуск.&quot;;
+            MessageBox.Show(owner, text, &quot;Ошибка данных&quot;, MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+    public static bool Confirm(Window owner, string text) =&gt; MessageBox.Show(owner, text,
+        &quot;Подтверждение удаления&quot;, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После полного Ui.cs выполните сборку. В итоговом приложении ошибка количества и ошибка БД имеют разные заголовки/пиктограммы и объясняют действие пользователя.</p></section></div></article><article class="lesson" id="page-32"><p class="eyebrow"></p><h2>Данные модели, размеры и количество</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/ProductWindow.xaml. Фрагмент 1 из 1 этого файла. Добавьте окно WPF ProductWindow через проект → Добавить → Новый элемент → Окно (WPF). В XAML задайте имена ProductImage, NameText, DetailsText, PriceText, SizesText, SizeBox, QuantityBox и AddButton. Размерный список заполняется из БД; значение количества сначала 1. ScrollViewer сохраняет читаемость длинного описания. Кнопка Назад закрывает карточку без добавления.</p></section><section class="block code"><h3>Код: ProductWindow.xaml</h3><pre>&lt;Window x:Class=&quot;ShopDb.ProductWindow&quot;
+ xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+ xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+ Style=&quot;{StaticResource {x:Type Window}}&quot; Title=&quot;Карточка товара&quot; Width=&quot;740&quot; Height=&quot;640&quot; WindowStartupLocation=&quot;CenterOwner&quot; Loaded=&quot;LoadedWindow&quot;&gt;
+ &lt;!-- === Данные модели, размеры и количество --&gt;
+ &lt;DockPanel Margin=&quot;20&quot;&gt;
+  &lt;StackPanel DockPanel.Dock=&quot;Bottom&quot;&gt;
+   &lt;TextBlock x:Name=&quot;SizesText&quot; TextWrapping=&quot;Wrap&quot; Margin=&quot;0,8&quot; /&gt;
+   &lt;StackPanel Orientation=&quot;Horizontal&quot;&gt;
+    &lt;TextBlock Text=&quot;Доступный размер:&quot; VerticalAlignment=&quot;Center&quot; /&gt;
+    &lt;ComboBox x:Name=&quot;SizeBox&quot; DisplayMemberPath=&quot;Display&quot; Width=&quot;240&quot; Margin=&quot;8&quot; /&gt;
+    &lt;TextBlock Text=&quot;Количество:&quot; VerticalAlignment=&quot;Center&quot; /&gt;
+    &lt;TextBox x:Name=&quot;QuantityBox&quot; Text=&quot;1&quot; Width=&quot;70&quot; Margin=&quot;8&quot; VerticalContentAlignment=&quot;Center&quot; /&gt;
+   &lt;/StackPanel&gt;
+   &lt;StackPanel Orientation=&quot;Horizontal&quot; HorizontalAlignment=&quot;Right&quot;&gt;
+    &lt;Button x:Name=&quot;AddButton&quot; Content=&quot;Добавить в заказ&quot; Click=&quot;AddClick&quot; IsEnabled=&quot;False&quot; /&gt;
+    &lt;Button x:Name=&quot;BackButton&quot; Content=&quot;Назад&quot; Click=&quot;BackClick&quot; /&gt;
+   &lt;/StackPanel&gt;
+  &lt;/StackPanel&gt;
+  &lt;ScrollViewer VerticalScrollBarVisibility=&quot;Auto&quot;&gt;
+   &lt;StackPanel&gt;
+    &lt;Image x:Name=&quot;ProductImage&quot; Width=&quot;230&quot; Height=&quot;160&quot; Stretch=&quot;Uniform&quot; /&gt;
+    &lt;TextBlock x:Name=&quot;NameText&quot; FontSize=&quot;24&quot; FontWeight=&quot;Bold&quot; TextWrapping=&quot;Wrap&quot; /&gt;
+    &lt;TextBlock x:Name=&quot;DetailsText&quot; TextWrapping=&quot;Wrap&quot; Margin=&quot;0,12&quot; /&gt;
+    &lt;TextBlock x:Name=&quot;PriceText&quot; FontSize=&quot;22&quot; /&gt;
+   &lt;/StackPanel&gt;
+  &lt;/ScrollViewer&gt;
+ &lt;/DockPanel&gt;
+&lt;/Window&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Заменяйте XAML окна целиком указанными частями по порядку. Обработчики подключены атрибутами Click и Loaded: код будет добавлен следующим. Пока XAML не закрыт и нет обработчиков, сборка ожидаемо не готова.</p></section></div></article><article class="lesson" id="page-33"><p class="eyebrow"></p><h2>Актуальные данные карточки</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/ProductWindow.xaml.cs. Фрагмент 1 из 2 этого файла. Откройте ProductWindow.xaml.cs через стрелку возле окна в Обозревателе решений. Замените класс и конструктор первым фрагментом. MainWindow передаст свежую Product. Loaded получает размеры повторно, показывает весь ряд и оставляет для покупки только доступные. До загрузки AddButton выключена.</p></section><section class="block code"><h3>Код: ProductWindow.xaml.cs</h3><pre>using System.Windows;
+using System.Windows.Media.Imaging;
+namespace ShopDb;
+public partial class ProductWindow : Window
+{
+    // === Актуальные данные карточки
+    private readonly Repository repository;
+    private readonly Product product;
+    public CartLine? Result { get; private set; }
+    public ProductWindow(Repository repository, Product product)
+    {
+        InitializeComponent();
+        this.repository = repository;
+        this.product = product;
+        Title = repository.Settings.Company + &quot; — &quot; + product.Name;
+        NameText.Text = product.Name;
+        DetailsText.Text = $&quot;Категория: {product.Category}\nПроизводство: {product.Manufacturer}\nСостав: {product.Composition}\nОписание: {product.Description}&quot;;
+        PriceText.Text = $&quot;Цена со скидкой: {product.FinalPrice:N2} ₽&quot;;
+        ProductImage.Source = new BitmapImage(new Uri(product.Picture));
+    }
+    private async void LoadedWindow(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, async () =&gt;
+    {
+        List&lt;SizeItem&gt; sizes = await repository.Sizes(product.Id);
+        SizesText.Text = &quot;Размерный ряд: &quot; + string.Join(&quot;, &quot;, sizes.Select(s =&gt; s.Label));
+        SizeBox.ItemsSource = sizes.Where(s =&gt; s.Available &gt; 0).ToList();
+        SizeBox.SelectedIndex = 0;
+        AddButton.IsEnabled = repository.User is not null &amp;&amp; SizeBox.Items.Count &gt; 0;
+    });</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Допишите обработчики следующей части. В готовом окне проверяйте логотип/иконку главной формы отдельно, изображение карточки — оригинальным файлом или заглушкой.</p></section><figure class="block screenshot"><h3>Реальный результат в WPF</h3><img src="assets/screenshots/2b11bde97d5f224f.png" alt="Реальная карточка выбранной модели: изображение, описание, цена со скидкой, размерный ряд и доступный остаток. Количество проверяется до добавления в корзину."><figcaption>Реальная карточка выбранной модели: изображение, описание, цена со скидкой, размерный ряд и доступный остаток. Количество проверяется до добавления в корзину.</figcaption></figure></div></article><article class="lesson" id="page-34"><p class="eyebrow"></p><h2>Проверка выбора до изменения корзины</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/ProductWindow.xaml.cs. Фрагмент 2 из 2 этого файла. TryParse отказывает буквам, дроби и отрицательному количеству; сравнение с доступным остатком защищает от очевидно невозможного выбора. Result передаёт позицию вызывающему окну, а DialogResult закрывает карточку. Сама карточка не создаёт заказ в БД.</p></section><section class="block code"><h3>Код: ProductWindow.xaml.cs</h3><pre>    // === Проверка выбора до изменения корзины
+    private void AddClick(object sender, RoutedEventArgs e)
+    {
+        if (repository.User is null || SizeBox.SelectedItem is not SizeItem size)
+        {
+            return;
+        }
+        if (!int.TryParse(QuantityBox.Text, out int quantity) || quantity &lt; 1 || quantity &gt; size.Available)
+        {
+            MessageBox.Show(this, $&quot;Введите целое количество от 1 до {size.Available}.&quot;,
+                &quot;Ошибка количества&quot;, MessageBoxButton.OK, MessageBoxImage.Error);
+            QuantityBox.Focus();
+            return;
+        }
+        Result = new CartLine(size.ItemId, $&quot;{product.Name} / {size.Label}&quot;, quantity, product.FinalPrice);
+        DialogResult = true;
+    }
+    private void BackClick(object sender, RoutedEventArgs e) =&gt; DialogResult = false;
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Окно закончено: сборка должна пройти вместе с Models, Repository и Ui. Позднее в карточке введите 0, буквы и количество больше остатка: сообщение появится, строки БД не добавятся. Назад вернёт к каталогу.</p></section></div></article><article class="lesson" id="page-35"><p class="eyebrow"></p><h2>Список заказов и состав выбранного</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/OrdersWindow.xaml. Фрагмент 1 из 1 этого файла. Добавьте OrdersWindow как Окно (WPF), замените XAML приведёнными частями. Верхний DataGrid — заголовки, нижний — состав. Binding обращается к именам колонок результата SQL. DatePicker и кнопки изменения изначально выключены, конструктор включит их только администратору. IsReadOnly не позволяет редактировать таблицу произвольным вводом.</p></section><section class="block code"><h3>Код: OrdersWindow.xaml</h3><pre>&lt;Window x:Class=&quot;ShopDb.OrdersWindow&quot;
+ xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+ xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+ Style=&quot;{StaticResource {x:Type Window}}&quot; Title=&quot;Заказы&quot; Width=&quot;1040&quot; Height=&quot;720&quot; WindowStartupLocation=&quot;CenterOwner&quot; Loaded=&quot;LoadedWindow&quot;&gt;
+ &lt;!-- === Список заказов и состав выбранного --&gt;
+ &lt;Grid Margin=&quot;18&quot;&gt;
+  &lt;Grid.RowDefinitions&gt;&lt;RowDefinition Height=&quot;Auto&quot; /&gt;&lt;RowDefinition Height=&quot;*&quot; /&gt;&lt;RowDefinition Height=&quot;Auto&quot; /&gt;&lt;RowDefinition Height=&quot;*&quot; /&gt;&lt;RowDefinition Height=&quot;Auto&quot; /&gt;&lt;/Grid.RowDefinitions&gt;
+  &lt;DockPanel&gt;&lt;TextBlock x:Name=&quot;UserText&quot; DockPanel.Dock=&quot;Right&quot; /&gt;&lt;TextBlock Text=&quot;Заказы клиентов&quot; FontSize=&quot;24&quot; FontWeight=&quot;Bold&quot; /&gt;&lt;/DockPanel&gt;
+  &lt;DataGrid x:Name=&quot;OrderGrid&quot; Grid.Row=&quot;1&quot; Margin=&quot;0,12&quot; SelectionChanged=&quot;OrderChanged&quot;&gt;
+   &lt;DataGrid.Columns&gt;
+    &lt;DataGridTextColumn Header=&quot;Заказ&quot; Binding=&quot;{Binding order_id}&quot; Width=&quot;80&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;Дата&quot; Binding=&quot;{Binding ordered_at,StringFormat={}{0:dd.MM.yyyy HH:mm}}&quot; Width=&quot;170&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;ФИО клиента&quot; Binding=&quot;{Binding fio}&quot; Width=&quot;*&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;Итог, ₽&quot; Binding=&quot;{Binding total,StringFormat={}{0:N2}}&quot; Width=&quot;130&quot; /&gt;
+   &lt;/DataGrid.Columns&gt;
+  &lt;/DataGrid&gt;
+  &lt;StackPanel Grid.Row=&quot;2&quot; Orientation=&quot;Horizontal&quot;&gt;
+   &lt;Button x:Name=&quot;NewButton&quot; Content=&quot;Добавить заказ&quot; Click=&quot;NewClick&quot; /&gt;
+   &lt;Button x:Name=&quot;DeleteOrderButton&quot; Content=&quot;Удалить заказ&quot; Click=&quot;DeleteOrderClick&quot; /&gt;
+   &lt;DatePicker x:Name=&quot;OrderDate&quot; Width=&quot;160&quot; Margin=&quot;12,4&quot; IsEnabled=&quot;False&quot; /&gt;
+   &lt;Button x:Name=&quot;ChangeDateButton&quot; Content=&quot;Изменить дату&quot; Click=&quot;ChangeDateClick&quot; IsEnabled=&quot;False&quot; /&gt;
+  &lt;/StackPanel&gt;
+  &lt;DataGrid x:Name=&quot;LineGrid&quot; Grid.Row=&quot;3&quot; Margin=&quot;0,12&quot;&gt;
+   &lt;DataGrid.Columns&gt;
+    &lt;DataGridTextColumn Header=&quot;Позиция: модель / производство / размер&quot; Binding=&quot;{Binding position}&quot; Width=&quot;*&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;Количество&quot; Binding=&quot;{Binding quantity}&quot; Width=&quot;100&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;Цена, ₽&quot; Binding=&quot;{Binding unit_price,StringFormat={}{0:N2}}&quot; Width=&quot;120&quot; /&gt;
+    &lt;DataGridTextColumn Header=&quot;Сумма, ₽&quot; Binding=&quot;{Binding total,StringFormat={}{0:N2}}&quot; Width=&quot;120&quot; /&gt;
+   &lt;/DataGrid.Columns&gt;
+  &lt;/DataGrid&gt;
+  &lt;StackPanel Grid.Row=&quot;4&quot; Orientation=&quot;Horizontal&quot; HorizontalAlignment=&quot;Right&quot;&gt;
+   &lt;Button x:Name=&quot;DeleteLineButton&quot; Content=&quot;Удалить товарную позицию&quot; Click=&quot;DeleteLineClick&quot; IsEnabled=&quot;False&quot; /&gt;
+   &lt;Button x:Name=&quot;RefreshButton&quot; Content=&quot;Обновить&quot; Click=&quot;RefreshClick&quot; /&gt;
+   &lt;Button x:Name=&quot;BackButton&quot; Content=&quot;Назад&quot; Click=&quot;BackClick&quot; /&gt;
+  &lt;/StackPanel&gt;
+ &lt;/Grid&gt;
+&lt;/Window&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Добавьте связанный код следующим. Сетка по звёздным строкам распределяет свободное место; Width=* у ФИО и позиции позволяет помещать длинные названия. Окончательная проверка выполняется под двумя ролями.</p></section></div></article><article class="lesson" id="page-36"><p class="eyebrow"></p><h2>Доступ сотрудника и загрузка списка</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/OrdersWindow.xaml.cs. Фрагмент 1 из 2 этого файла. Замените код OrdersWindow.xaml.cs. Reload заново читает список и очищает старый состав. OrderChanged читает строки выбранного заказа; после await проверяет, что выбран тот же заказ, чтобы поздний ответ не заменил состав другого заказа. Номер извлекается из выбранной строки, а не из текста заголовка.</p></section><section class="block code"><h3>Код: OrdersWindow.xaml.cs</h3><pre>using System.Data;
+using System.Windows;
+using System.Windows.Controls;
+namespace ShopDb;
+public partial class OrdersWindow : Window
+{
+    // === Доступ сотрудника и загрузка списка
+    private readonly Repository repository;
+    private bool busy;
+    public OrdersWindow(Repository repository)
+    {
+        InitializeComponent();
+        this.repository = repository;
+        Title = repository.Settings.Company + &quot; — Заказы&quot;;
+        UserText.Text = repository.User?.Fio;
+        ChangeDateButton.IsEnabled = repository.User?.IsAdmin == true;
+        DeleteLineButton.IsEnabled = repository.User?.IsAdmin == true;
+        OrderDate.IsEnabled = repository.User?.IsAdmin == true;
+    }
+    private async void LoadedWindow(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, Reload);
+    private long SelectedOrder =&gt; OrderGrid.SelectedItem is DataRowView row
+        ? Convert.ToInt64(row[&quot;order_id&quot;])
+        : throw new InvalidOperationException(&quot;Выберите заказ в верхней таблице.&quot;);
+    private async Task Reload()
+    {
+        OrderGrid.ItemsSource = (await repository.Orders()).DefaultView;
+        LineGrid.ItemsSource = null;
+    }
+    private async void OrderChanged(object sender, SelectionChangedEventArgs e) =&gt; await Ui.Run(this, async () =&gt;
+    {
+        if (OrderGrid.SelectedItem is DataRowView row)
+        {
+            long id = Convert.ToInt64(row[&quot;order_id&quot;]);
+            OrderDate.SelectedDate = Convert.ToDateTime(row[&quot;ordered_at&quot;]);
+            DataTable lines = await repository.Lines(id);
+            if (OrderGrid.SelectedItem is DataRowView current &amp;&amp; Convert.ToInt64(current[&quot;order_id&quot;]) == id)
+            {
+                LineGrid.ItemsSource = lines.DefaultView;
+            }
+        }
+    });</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Допишите вторую часть класса. В готовом приложении быстро переключайте заказы: нижняя таблица должна соответствовать текущей выбранной верхней строке.</p></section></div></article><article class="lesson" id="page-37"><p class="eyebrow"></p><h2>Подтверждение необратимых действий и обновление</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/OrdersWindow.xaml.cs. Фрагмент 2 из 2 этого файла. Mutate блокирует повторное нажатие на период изменения и всегда возвращает управление после обработки ошибки. DeleteOrder и DeleteLine предупреждают о последствиях. После CALL перечитывается список; NewClick возвращает к каталогу для выбора модели и клиента. Изменение даты сохраняет выбранный календарный день с временем 00:00.</p></section><section class="block code"><h3>Код: OrdersWindow.xaml.cs</h3><pre>    // === Подтверждение необратимых действий и обновление
+    private async Task Mutate(Func&lt;Task&gt; action)
+    {
+        if (busy)
+        {
+            return;
+        }
+        busy = true;
+        IsEnabled = false;
+        await Ui.Run(this, action);
+        IsEnabled = true;
+        busy = false;
+    }
+    private async void DeleteOrderClick(object sender, RoutedEventArgs e) =&gt; await Mutate(async () =&gt;
+    {
+        long id = SelectedOrder;
+        if (Ui.Confirm(this, $&quot;Удалить заказ №{id}? Товары вернутся в остаток, запись заказа будет удалена.&quot;))
+        {
+            await repository.DeleteOrder(id);
+            await Reload();
+        }
+    });
+    private async void DeleteLineClick(object sender, RoutedEventArgs e) =&gt; await Mutate(async () =&gt;
+    {
+        long order = SelectedOrder;
+        if (LineGrid.SelectedItem is not DataRowView row)
+        {
+            throw new InvalidOperationException(&quot;Выберите товарную позицию в нижней таблице.&quot;);
+        }
+        long item = Convert.ToInt64(row[&quot;item_id&quot;]);
+        if (Ui.Confirm(this, &quot;Удалить выбранную позицию и вернуть её количество в остаток? Если она последняя, заказ будет удалён.&quot;))
+        {
+            await repository.DeleteLine(order, item);
+            await Reload();
+        }
+    });
+    private async void ChangeDateClick(object sender, RoutedEventArgs e) =&gt; await Mutate(async () =&gt;
+    {
+        long order = SelectedOrder;
+        DateTime date = OrderDate.SelectedDate ?? throw new InvalidOperationException(&quot;Выберите дату заказа.&quot;);
+        await repository.ChangeDate(order, date);
+        await Reload();
+    });
+    private async void RefreshClick(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, Reload);
+    private void NewClick(object sender, RoutedEventArgs e) =&gt; DialogResult = true;
+    private void BackClick(object sender, RoutedEventArgs e) =&gt; DialogResult = false;
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Окно закончено, выполните сборку. Для проверки нужны созданные в демонстрации заказы: отказ в предупреждении ничего не меняет; подтверждение возвращает остаток. После удаления последней позиции пустой заказ исчезает.</p></section></div></article><article class="lesson" id="page-38"><p class="eyebrow"></p><h2>Верхняя панель входа</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/MainWindow.xaml. Фрагмент 1 из 4 этого файла. Откройте MainWindow.xaml в заготовке. Замените весь исходный XAML частями ниже. Grid выделяет отдельные строки, DockPanel располагает логотип, ФИО и кнопки. Image использует Stretch=Uniform и сохраняет пропорции ресурса. LoginBox и LoginButton вводят логин; LogoutButton и OrdersButton изначально скрыты.</p></section><section class="block code"><h3>Код: MainWindow.xaml</h3><pre>&lt;Window x:Class=&quot;ShopDb.MainWindow&quot;
+ xmlns=&quot;http://schemas.microsoft.com/winfx/2006/xaml/presentation&quot;
+ xmlns:x=&quot;http://schemas.microsoft.com/winfx/2006/xaml&quot;
+ Style=&quot;{StaticResource {x:Type Window}}&quot; Title=&quot;Магазин «Пара» — Каталог&quot; Width=&quot;1260&quot; Height=&quot;800&quot;
+ MinWidth=&quot;1050&quot; MinHeight=&quot;650&quot; Icon=&quot;Assets/shop.ico&quot; Loaded=&quot;LoadedWindow&quot;&gt;
+ &lt;!-- === Верхняя панель входа --&gt;
+ &lt;Grid Margin=&quot;16&quot;&gt;
+  &lt;Grid.RowDefinitions&gt;
+   &lt;RowDefinition Height=&quot;Auto&quot; /&gt;
+   &lt;RowDefinition Height=&quot;Auto&quot; /&gt;
+   &lt;RowDefinition Height=&quot;*&quot; /&gt;
+   &lt;RowDefinition Height=&quot;Auto&quot; /&gt;
+  &lt;/Grid.RowDefinitions&gt;
+  &lt;Border Background=&quot;#D2F6E7&quot; Padding=&quot;12&quot;&gt;
+   &lt;DockPanel&gt;
+    &lt;Image Source=&quot;Assets/logo.png&quot; Width=&quot;70&quot; Height=&quot;55&quot; Stretch=&quot;Uniform&quot; DockPanel.Dock=&quot;Left&quot; /&gt;
+    &lt;StackPanel DockPanel.Dock=&quot;Right&quot; Orientation=&quot;Horizontal&quot;&gt;
+     &lt;TextBox x:Name=&quot;LoginBox&quot; Width=&quot;125&quot; Height=&quot;30&quot; Margin=&quot;8&quot; VerticalContentAlignment=&quot;Center&quot; /&gt;
+     &lt;Button x:Name=&quot;LoginButton&quot; Content=&quot;Войти&quot; Click=&quot;LoginClick&quot; /&gt;
+     &lt;Button x:Name=&quot;LogoutButton&quot; Content=&quot;Выйти&quot; Click=&quot;LogoutClick&quot; Visibility=&quot;Collapsed&quot; /&gt;
+     &lt;Button x:Name=&quot;OrdersButton&quot; Content=&quot;Заказы&quot; Click=&quot;OrdersClick&quot; Visibility=&quot;Collapsed&quot; /&gt;
+    &lt;/StackPanel&gt;
+    &lt;TextBlock x:Name=&quot;UserText&quot; Text=&quot;Гость&quot; TextAlignment=&quot;Right&quot; VerticalAlignment=&quot;Center&quot; Margin=&quot;12&quot; /&gt;
+   &lt;/DockPanel&gt;
+  &lt;/Border&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Продолжайте XAML до закрывающего Window; связанные обработчики будут добавлены после полной разметки. Не изменяйте автоматически создаваемые файлы obj и код дизайнера.</p></section></div></article><article class="lesson" id="page-39"><p class="eyebrow"></p><h2>Совместные поиск, фильтр и сортировка</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml. Фрагмент 2 из 4 этого файла. Имена SearchBox, CategoryBox, SortBox связывают элементы с кодом. TextChanged и SelectionChanged вызывают одну ApplyFilter; отдельной кнопки поиска нет. FilterPanel выключена для гостя. В ComboBox категорий код добавит Все категории первым элементом.</p></section><section class="block code"><h3>Код: MainWindow.xaml</h3><pre>  &lt;!-- === Совместные поиск, фильтр и сортировка --&gt;
+  &lt;StackPanel x:Name=&quot;FilterPanel&quot; Grid.Row=&quot;1&quot; Orientation=&quot;Horizontal&quot; Margin=&quot;0,12&quot; IsEnabled=&quot;False&quot;&gt;
+   &lt;TextBlock Text=&quot;Поиск:&quot; VerticalAlignment=&quot;Center&quot; /&gt;
+   &lt;TextBox x:Name=&quot;SearchBox&quot; Width=&quot;240&quot; Margin=&quot;8,0&quot; TextChanged=&quot;FilterChanged&quot; /&gt;
+   &lt;ComboBox x:Name=&quot;CategoryBox&quot; Width=&quot;260&quot; DisplayMemberPath=&quot;Name&quot; SelectionChanged=&quot;SelectionChanged&quot; Margin=&quot;8,0&quot; /&gt;
+   &lt;ComboBox x:Name=&quot;SortBox&quot; Width=&quot;180&quot; SelectionChanged=&quot;SelectionChanged&quot; SelectedIndex=&quot;0&quot;&gt;
+    &lt;ComboBoxItem Content=&quot;По каталогу&quot; /&gt;
+    &lt;ComboBoxItem Content=&quot;Цена ↑&quot; /&gt;
+    &lt;ComboBoxItem Content=&quot;Цена ↓&quot; /&gt;
+   &lt;/ComboBox&gt;
+  &lt;/StackPanel&gt;
+  &lt;Grid Grid.Row=&quot;2&quot;&gt;
+   &lt;Grid.ColumnDefinitions&gt;&lt;ColumnDefinition Width=&quot;*&quot; /&gt;&lt;ColumnDefinition Width=&quot;320&quot; /&gt;&lt;/Grid.ColumnDefinitions&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Фрагмент продолжается внутри Grid. После полного окна проверяйте три условия одновременно: фильтр не сбрасывает поиск, поиск не сбрасывает сортировку, Все категории снимает только категорию.</p></section></div></article><article class="lesson" id="page-40"><p class="eyebrow"></p><h2>Карточка модели из базы</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml. Фрагмент 3 из 4 этого файла. DataTemplate описывает карточку каждой Product. Binding обращается к её свойствам; триггер LowStock даёт #ff8080 при общем остатке ≤3. Цена и исходная цена различаются подписями. Двойной щелчок по элементу открывает его карточку; нижняя кнопка предоставляет то же действие.</p></section><section class="block code"><h3>Код: MainWindow.xaml</h3><pre>   &lt;!-- === Карточка модели из базы --&gt;
+   &lt;ListBox x:Name=&quot;CatalogList&quot; MouseDoubleClick=&quot;ProductClick&quot; ScrollViewer.HorizontalScrollBarVisibility=&quot;Disabled&quot; HorizontalContentAlignment=&quot;Stretch&quot;&gt;
+    &lt;ListBox.ItemTemplate&gt;
+     &lt;DataTemplate&gt;
+      &lt;Border Padding=&quot;10&quot; Margin=&quot;2&quot;&gt;
+       &lt;Border.Style&gt;
+        &lt;Style TargetType=&quot;Border&quot;&gt;
+         &lt;Setter Property=&quot;Background&quot; Value=&quot;White&quot; /&gt;
+         &lt;Style.Triggers&gt;&lt;DataTrigger Binding=&quot;{Binding LowStock}&quot; Value=&quot;True&quot;&gt;&lt;Setter Property=&quot;Background&quot; Value=&quot;#ff8080&quot; /&gt;&lt;/DataTrigger&gt;&lt;/Style.Triggers&gt;
+        &lt;/Style&gt;
+       &lt;/Border.Style&gt;
+       &lt;Grid&gt;
+        &lt;Grid.ColumnDefinitions&gt;&lt;ColumnDefinition Width=&quot;115&quot; /&gt;&lt;ColumnDefinition Width=&quot;*&quot; /&gt;&lt;ColumnDefinition Width=&quot;130&quot; /&gt;&lt;/Grid.ColumnDefinitions&gt;
+        &lt;Image Source=&quot;{Binding Picture}&quot; Width=&quot;105&quot; Height=&quot;100&quot; Stretch=&quot;Uniform&quot; /&gt;
+        &lt;StackPanel Grid.Column=&quot;1&quot; Margin=&quot;12,0&quot;&gt;
+         &lt;TextBlock Text=&quot;{Binding Category}&quot; /&gt;
+         &lt;TextBlock Text=&quot;{Binding Name}&quot; FontSize=&quot;20&quot; FontWeight=&quot;Bold&quot; TextWrapping=&quot;Wrap&quot; /&gt;
+         &lt;TextBlock Text=&quot;{Binding Manufacturer,StringFormat=Производство: {0}}&quot; /&gt;
+         &lt;TextBlock Text=&quot;{Binding Composition,StringFormat=Состав: {0}}&quot; TextWrapping=&quot;Wrap&quot; /&gt;
+         &lt;TextBlock Text=&quot;{Binding StockLabel,StringFormat=На складе: {0}}&quot; /&gt;
+        &lt;/StackPanel&gt;
+        &lt;StackPanel Grid.Column=&quot;2&quot; VerticalAlignment=&quot;Center&quot;&gt;
+         &lt;TextBlock Text=&quot;{Binding FinalPrice,StringFormat={}{0:N2} ₽}&quot; FontSize=&quot;22&quot; FontWeight=&quot;Bold&quot; /&gt;
+         &lt;TextBlock Text=&quot;{Binding Price,StringFormat=Базовая: {0:N2}}&quot; /&gt;
+        &lt;/StackPanel&gt;
+       &lt;/Grid&gt;
+      &lt;/Border&gt;
+     &lt;/DataTemplate&gt;
+    &lt;/ListBox.ItemTemplate&gt;
+   &lt;/ListBox&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Сохраните следующую часть в том же XAML. После заполнения окна проверяйте границы 3/4 и 5/6 на контролируемом наборе, а не только цвет первого товара.</p></section></div></article><article class="lesson" id="page-41"><p class="eyebrow"></p><h2>Корзина до подтверждения хранится в памяти</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml. Фрагмент 4 из 4 этого файла. CartList привязан к ObservableCollection. CustomerBox показывает владельца заказа; для клиента он заблокирован. CartQuantity меняет выбранную позицию через кнопку. Подтверждение отдельно от добавления; сумма названа предварительной, потому что окончательные цена и остаток проверяются на сервере.</p></section><section class="block code"><h3>Код: MainWindow.xaml</h3><pre>   &lt;!-- === Корзина до подтверждения хранится в памяти --&gt;
+   &lt;Border Grid.Column=&quot;1&quot; Background=&quot;#D2F6E7&quot; Padding=&quot;10&quot; Margin=&quot;12,0,0,0&quot;&gt;
+    &lt;DockPanel&gt;
+     &lt;StackPanel DockPanel.Dock=&quot;Top&quot;&gt;
+      &lt;TextBlock Text=&quot;Текущий заказ&quot; FontSize=&quot;22&quot; FontWeight=&quot;Bold&quot; /&gt;
+      &lt;TextBlock Text=&quot;Клиент заказа&quot; Margin=&quot;0,8,0,2&quot; /&gt;
+      &lt;ComboBox x:Name=&quot;CustomerBox&quot; DisplayMemberPath=&quot;Name&quot; /&gt;
+     &lt;/StackPanel&gt;
+     &lt;StackPanel DockPanel.Dock=&quot;Bottom&quot;&gt;
+      &lt;TextBlock x:Name=&quot;CartTotal&quot; Text=&quot;Итого: 0,00 ₽&quot; Margin=&quot;0,8&quot; FontWeight=&quot;Bold&quot; /&gt;
+      &lt;TextBlock Text=&quot;Цена окончательно проверяется при подтверждении.&quot; TextWrapping=&quot;Wrap&quot; /&gt;
+      &lt;Button x:Name=&quot;RemoveCartButton&quot; Content=&quot;Убрать выбранную позицию&quot; Click=&quot;RemoveCartClick&quot; /&gt;
+      &lt;StackPanel Orientation=&quot;Horizontal&quot;&gt;&lt;TextBox x:Name=&quot;CartQuantity&quot; Text=&quot;1&quot; Width=&quot;55&quot; Margin=&quot;4&quot; VerticalContentAlignment=&quot;Center&quot; /&gt;&lt;Button x:Name=&quot;ChangeCartButton&quot; Content=&quot;Изменить количество&quot; Click=&quot;ChangeCartClick&quot; /&gt;&lt;/StackPanel&gt;
+      &lt;Button x:Name=&quot;CheckoutButton&quot; Content=&quot;Подтвердить заказ&quot; Click=&quot;CheckoutClick&quot; IsEnabled=&quot;False&quot; /&gt;
+      &lt;Button x:Name=&quot;CancelCartButton&quot; Content=&quot;Отказаться от заказа&quot; Click=&quot;CancelCartClick&quot; /&gt;
+     &lt;/StackPanel&gt;
+     &lt;ListBox x:Name=&quot;CartList&quot; Margin=&quot;0,10&quot; ScrollViewer.HorizontalScrollBarVisibility=&quot;Disabled&quot;&gt;
+      &lt;ListBox.ItemTemplate&gt;&lt;DataTemplate&gt;&lt;StackPanel Width=&quot;260&quot;&gt;&lt;TextBlock Text=&quot;{Binding Position}&quot; TextWrapping=&quot;Wrap&quot; /&gt;&lt;TextBlock Text=&quot;{Binding Quantity,StringFormat=Количество: {0}}&quot; /&gt;&lt;TextBlock Text=&quot;{Binding Total,StringFormat={}{0:N2} ₽}&quot; /&gt;&lt;/StackPanel&gt;&lt;/DataTemplate&gt;&lt;/ListBox.ItemTemplate&gt;
+     &lt;/ListBox&gt;
+    &lt;/DockPanel&gt;
+   &lt;/Border&gt;
+  &lt;/Grid&gt;
+  &lt;DockPanel Grid.Row=&quot;3&quot; Margin=&quot;0,12,0,0&quot;&gt;
+   &lt;Button x:Name=&quot;OpenProductButton&quot; Content=&quot;Открыть выбранный товар&quot; Click=&quot;OpenProductClick&quot; DockPanel.Dock=&quot;Right&quot; /&gt;
+   &lt;Button x:Name=&quot;RefreshButton&quot; Content=&quot;Обновить каталог&quot; Click=&quot;RefreshClick&quot; DockPanel.Dock=&quot;Right&quot; /&gt;
+   &lt;TextBlock x:Name=&quot;StatusText&quot; Text=&quot;Загрузка каталога…&quot; VerticalAlignment=&quot;Center&quot; TextWrapping=&quot;Wrap&quot; /&gt;
+  &lt;/DockPanel&gt;
+ &lt;/Grid&gt;
+&lt;/Window&gt;</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Закончите MainWindow.xaml и сохраните. Вводить код обработчиков будем в MainWindow.xaml.cs. Пока их нет, ошибки имён Click ожидаемы; следующий завершённый блок устраняет их.</p></section></div></article><article class="lesson" id="page-42"><p class="eyebrow"></p><h2>Состояние окна и первоначальная загрузка</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Создайте или замените файл с начала: app/MainWindow.xaml.cs. Фрагмент 1 из 5 этого файла. Замените MainWindow.xaml.cs, начиная с импортов и объявления класса. InitializeComponent создаёт элементы XAML; LoadedWindow читает конфигурацию и каталог. RefreshCatalog сохраняет выбранную категорию и заново строит список; её идентификатор хранится отдельно от подписи.</p></section><section class="block code"><h3>Код: MainWindow.xaml.cs</h3><pre>using System.Collections.ObjectModel;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using MySqlConnector;
+namespace ShopDb;
+public partial class MainWindow : Window
+{
+    // === Состояние окна и первоначальная загрузка
+    private Repository? repository;
+    private List&lt;Product&gt; products = new();
+    private readonly ObservableCollection&lt;CartLine&gt; cart = new();
+    private string requestKey = Guid.NewGuid().ToString();
+    private bool pending;
+    private bool busy;
+    public MainWindow()
+    {
+        InitializeComponent();
+        CartList.ItemsSource = cart;
+    }
+    private async void LoadedWindow(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, async () =&gt;
+    {
+        repository = new Repository();
+        Title = repository.Settings.Company + &quot; — Каталог&quot;;
+        await RefreshCatalog();
+    });
+    private Repository Repo =&gt; repository ?? throw new InvalidOperationException(&quot;Проверьте настройки и перезапустите приложение.&quot;);
+    private async Task RefreshCatalog()
+    {
+        products = await Repo.Catalog();
+        long selected = (CategoryBox.SelectedItem as Choice)?.Id ?? 0;
+        CategoryBox.ItemsSource = new[] { new Choice(0, &quot;Все категории&quot;) }
+            .Concat(products.Select(p =&gt; new Choice(p.CategoryId, p.Category)).Distinct()).ToList();
+        CategoryBox.SelectedItem = ((List&lt;Choice&gt;)CategoryBox.ItemsSource)
+            .FirstOrDefault(c =&gt; c.Id == selected) ?? ((List&lt;Choice&gt;)CategoryBox.ItemsSource)[0];
+        ApplyFilter();
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Добавьте остальные части внутри того же класса по порядку. Заготовка и итоговый проект используют одинаковое пространство имён ShopDb. Пока все обработчики не добавлены, окончательная сборка ещё не готова.</p></section></div></article><article class="lesson" id="page-43"><p class="eyebrow"></p><h2>Фильтрация и сортировка одной выборки</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml.cs. Фрагмент 2 из 5 этого файла. ApplyFilter сначала объединяет категорию и поиск, затем применяет выбранную сортировку с устойчивым порядком по Id для равных цен. Contains сравнивает без учёта регистра. Гость получает полный исходный список. Проверка null защищает события ComboBox во время InitializeComponent.</p></section><section class="block code"><h3>Код: MainWindow.xaml.cs</h3><pre>    // === Фильтрация и сортировка одной выборки
+    private void ApplyFilter()
+    {
+        if (CatalogList is null || CategoryBox is null || SortBox is null || SearchBox is null)
+        {
+            return;
+        }
+        IEnumerable&lt;Product&gt; view = products;
+        if (repository?.User is not null)
+        {
+            string search = SearchBox.Text.Trim();
+            long category = (CategoryBox.SelectedItem as Choice)?.Id ?? 0;
+            view = view.Where(p =&gt; (category == 0 || p.CategoryId == category)
+                &amp;&amp; (p.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || p.Description.Contains(search, StringComparison.OrdinalIgnoreCase)));
+            view = SortBox.SelectedIndex switch
+            {
+                1 =&gt; view.OrderBy(p =&gt; p.FinalPrice).ThenBy(p =&gt; p.Id),
+                2 =&gt; view.OrderByDescending(p =&gt; p.FinalPrice).ThenBy(p =&gt; p.Id),
+                _ =&gt; view.OrderBy(p =&gt; p.Id)
+            };
+        }
+        List&lt;Product&gt; result = view.ToList();
+        CatalogList.ItemsSource = result;
+        StatusText.Text = $&quot;Показано моделей: {result.Count} из {products.Count}. Двойной щелчок открывает карточку.&quot;;
+    }
+    private void FilterChanged(object sender, TextChangedEventArgs e) =&gt; ApplyFilter();
+    private void SelectionChanged(object sender, SelectionChangedEventArgs e) =&gt; ApplyFilter();</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Продолжите класс. После полного решения вводите часть описания и выбирайте категорию: результат сравнивайте с Product.Description и CategoryId, а не только названием.</p></section></div></article><article class="lesson" id="page-44"><p class="eyebrow"></p><h2>Смена пользователя и доступных действий</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml.cs. Фрагмент 3 из 5 этого файла. LoginClick сбрасывает корзину при успешном входе, обновляет доступность интерфейса и список клиентов. UpdateUser показывает ФИО и кнопки по роли. Logout очищает пользовательское состояние и возвращает гостевой каталог. Нельзя сменить пользователя во время неясного подтверждения заказа.</p></section><section class="block code"><h3>Код: MainWindow.xaml.cs</h3><pre>    // === Смена пользователя и доступных действий
+    private async void LoginClick(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, async () =&gt;
+    {
+        if (busy || pending)
+        {
+            throw new InvalidOperationException(&quot;Завершите подтверждение текущего заказа перед сменой пользователя.&quot;);
+        }
+        await Repo.Login(LoginBox.Text);
+        ClearCart();
+        UpdateUser();
+        await LoadCustomers();
+        await RefreshCatalog();
+    });
+    private void UpdateUser()
+    {
+        UserText.Text = Repo.User?.Fio ?? &quot;Гость&quot;;
+        FilterPanel.IsEnabled = Repo.User is not null;
+        LoginButton.Visibility = Repo.User is null ? Visibility.Visible : Visibility.Collapsed;
+        LogoutButton.Visibility = Repo.User is null ? Visibility.Collapsed : Visibility.Visible;
+        OrdersButton.Visibility = Repo.User?.IsStaff == true ? Visibility.Visible : Visibility.Collapsed;
+        CustomerBox.IsEnabled = Repo.User?.IsStaff == true;
+        UpdateCart();
+    }
+    private async Task LoadCustomers()
+    {
+        CustomerBox.ItemsSource = await Repo.Customers();
+        CustomerBox.SelectedItem = ((List&lt;Choice&gt;)CustomerBox.ItemsSource)
+            .FirstOrDefault(c =&gt; c.Id == Repo.User!.Id);
+    }
+    private void LogoutClick(object sender, RoutedEventArgs e)
+    {
+        if (busy || pending)
+        {
+            MessageBox.Show(this, &quot;Сначала повторите подтверждение текущего заказа.&quot;, &quot;Информация&quot;, MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        Repo.Logout();
+        ClearCart();
+        CustomerBox.ItemsSource = null;
+        UpdateUser();
+        ApplyFilter();
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>После завершения файла сравните гостя, pp_client, pp_manager, pp_admin; клиент не видит Заказы, сотрудники видят. Выход убирает корзину и выбор клиента.</p></section></div></article><article class="lesson" id="page-45"><p class="eyebrow"></p><h2>Карточка модели и изменения корзины</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml.cs. Фрагмент 4 из 5 этого файла. Перед открытием карточки модель заново читается из БД. Повторный выбор того же размера объединяется с прежним количеством и проверяется по актуальному остатку. Изменения корзины создают новый ключ; отмена неподтверждённой корзины очищает только память. При неясном сетевом результате корзина заморожена для повторного подтверждения без смены ключа.</p></section><section class="block code"><h3>Код: MainWindow.xaml.cs</h3><pre>    // === Карточка модели и изменения корзины
+    private void ProductClick(object sender, MouseButtonEventArgs e) =&gt; OpenProduct();
+    private void OpenProductClick(object sender, RoutedEventArgs e) =&gt; OpenProduct();
+    private async void OpenProduct() =&gt; await Ui.Run(this, async () =&gt;
+    {
+        if (pending || busy)
+        {
+            throw new InvalidOperationException(&quot;Повторите подтверждение текущего заказа, прежде чем менять корзину.&quot;);
+        }
+        if (CatalogList.SelectedItem is not Product selected)
+        {
+            throw new InvalidOperationException(&quot;Сначала выберите модель в каталоге.&quot;);
+        }
+        Product current = (await Repo.Catalog()).Single(p =&gt; p.Id == selected.Id);
+        var window = new ProductWindow(Repo, current) { Owner = this };
+        if (window.ShowDialog() == true &amp;&amp; window.Result is CartLine line)
+        {
+            CartLine? previous = cart.FirstOrDefault(c =&gt; c.ItemId == line.ItemId);
+            if (previous is not null)
+            {
+                line = line with { Quantity = previous.Quantity + line.Quantity };
+                SizeItem size = (await Repo.Sizes(current.Id)).Single(s =&gt; s.ItemId == line.ItemId);
+                if (line.Quantity &gt; size.Available)
+                {
+                    throw new InvalidOperationException(&quot;Суммарное количество в корзине превышает доступный остаток. Уменьшите количество выбранной позиции.&quot;);
+                }
+                cart.Remove(previous);
+            }
+            cart.Add(line);
+            requestKey = Guid.NewGuid().ToString();
+            UpdateCart();
+        }
+    });
+    private void UpdateCart()
+    {
+        CartTotal.Text = $&quot;Итого: {cart.Sum(c =&gt; c.Total):N2} ₽&quot;;
+        CheckoutButton.IsEnabled = repository?.User is not null &amp;&amp; cart.Count &gt; 0 &amp;&amp; !busy;
+        RemoveCartButton.IsEnabled = !busy &amp;&amp; !pending;
+        ChangeCartButton.IsEnabled = !busy &amp;&amp; !pending;
+        CancelCartButton.IsEnabled = !busy &amp;&amp; !pending;
+        CustomerBox.IsEnabled = repository?.User?.IsStaff == true &amp;&amp; !busy &amp;&amp; !pending;
+    }
+    private void ClearCart()
+    {
+        cart.Clear();
+        pending = false;
+        requestKey = Guid.NewGuid().ToString();
+        UpdateCart();
+    }
+    private void RemoveCartClick(object sender, RoutedEventArgs e)
+    {
+        if (!pending &amp;&amp; !busy &amp;&amp; CartList.SelectedItem is CartLine line)
+        {
+            cart.Remove(line);
+            requestKey = Guid.NewGuid().ToString();
+            UpdateCart();
+        }
+    }
+    private void CancelCartClick(object sender, RoutedEventArgs e)
+    {
+        if (!pending &amp;&amp; !busy)
+        {
+            ClearCart();
+            StatusText.Text = &quot;Неподтверждённый заказ отменён. БД не изменялась.&quot;;
+        }
+    }
+    private void ChangeCartClick(object sender, RoutedEventArgs e)
+    {
+        if (busy || pending || CartList.SelectedItem is not CartLine line)
+        {
+            return;
+        }
+        if (!int.TryParse(CartQuantity.Text, out int quantity) || quantity &lt; 1 || quantity &gt; 999999)
+        {
+            MessageBox.Show(this, &quot;Введите целое количество от 1 до 999999. Остаток будет проверен при подтверждении.&quot;, &quot;Ошибка количества&quot;, MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+        int index = cart.IndexOf(line);
+        cart[index] = line with { Quantity = quantity };
+        requestKey = Guid.NewGuid().ToString();
+        UpdateCart();
+    }</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Допишите последнюю часть. В готовом приложении добавьте одну позицию дважды; должна быть одна строка с общей Quantity. Уберите строку и вернитесь Назад: БД пока не изменилась.</p></section></div></article><article class="lesson" id="page-46"><p class="eyebrow"></p><h2>Подтверждение и повтор с тем же ключом</h2><div class="blocks"><section class="block text"><h3>Где и зачем</h3><p>Допишите в конец текущего файла: app/MainWindow.xaml.cs. Фрагмент 5 из 5 этого файла. busy блокирует двойное нажатие, pending сохраняет неизменную корзину при неясном исходе. Известная серверная ошибка с откатом снимает pending, позволяя уменьшить количество. Успех очищает корзину и перечитывает каталог. При повторе сервер использует прежний request_key; новые покупки получают новый Guid.</p></section><section class="block code"><h3>Код: MainWindow.xaml.cs</h3><pre>    // === Подтверждение и повтор с тем же ключом
+    private async void CheckoutClick(object sender, RoutedEventArgs e)
+    {
+        if (busy || cart.Count == 0)
+        {
+            return;
+        }
+        busy = true;
+        pending = true;
+        UpdateCart();
+        await Ui.Run(this, async () =&gt;
+        {
+            if (CustomerBox.SelectedItem is not Choice customer)
+            {
+                pending = false;
+                throw new InvalidOperationException(&quot;Выберите клиента заказа.&quot;);
+            }
+            long id;
+            try
+            {
+                id = await Repo.Checkout(customer.Id, cart, requestKey);
+            }
+            catch (MySqlException error) when (error.SqlState == &quot;45000&quot; || error.Number is 1213 or 1205)
+            {
+                pending = false;
+                throw;
+            }
+            ClearCart();
+            await RefreshCatalog();
+            StatusText.Text = $&quot;Заказ №{id} сохранён. Остатки и цены каталога обновлены.&quot;;
+        });
+        busy = false;
+        UpdateCart();
+    }
+    private async void RefreshClick(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, RefreshCatalog);
+    private async void OrdersClick(object sender, RoutedEventArgs e) =&gt; await Ui.Run(this, async () =&gt;
+    {
+        var window = new OrdersWindow(Repo) { Owner = this };
+        if (window.ShowDialog() == true)
+        {
+            StatusText.Text = &quot;Для нового заказа найдите товар и добавьте нужный размер в корзину.&quot;;
+        }
+        await RefreshCatalog();
+    });
+}</pre></section><section class="block text"><h3>Сохранение и проверка</h3><p>Файл и приложение закончены. Сохранить всё → Сборка → Собрать решение → Ctrl+F5. Если есть ошибка, откройте Список ошибок двойным щелчком, проверьте имя файла, пространство имён и соответствие событий XAML. Никаких правок в obj делать не нужно.</p></section></div></article><article class="lesson" id="page-47"><p class="eyebrow"></p><h2>Первый запуск: вход, каталог и размерный ряд</h2><div class="blocks"><section class="block text"><h3>Запуск</h3><p>Выполните Сохранить всё, Сборка → Собрать решение, Отладка → Запуск без отладки (Ctrl+F5). Первое окно показывает каталог в режиме гостя. Сравните количество моделей с CALL pp_catalog(CURDATE()). Фильтры гостя выключены, кнопки Заказы нет. Выберите модель и нажмите Открыть выбранный товар: доступный ряд соответствует pp_sizes её product_id.</p></section><section class="block text"><h3>Вход</h3><p>В поле введите pp_client, нажмите Войти. Вверху появится ФИО «Учебный Клиент», фильтры станут активными. Проверяйте неправильный логин, в том числе кавычку: сообщение «Логин не найден», доступа сотрудника нет. Выйдите и повторите для pp_manager, затем pp_admin. Не используйте пароли СУБД в поле логина приложения.</p></section><section class="block text"><h3>Сортировка вместе с поиском</h3><p>Выберите Цена ↑, затем категорию, затем часть названия или описания. После каждого изменения результат перестраивается без кнопки. Выберите Все категории: поиск и сортировка сохраняются. Для равных цен порядок по product_id устойчив. Сравните известные строки исходных данных с результатом.</p></section><figure class="block screenshot"><h3>Реальный результат в WPF</h3><img src="assets/screenshots/8d33fcc4cd620886.png" alt="Каталог демонстрационной БД в запущенном WPF-приложении. После входа учебного клиента доступны поиск, категория и сортировка; заказ оформляется для этого клиента."><figcaption>Каталог демонстрационной БД в запущенном WPF-приложении. После входа учебного клиента доступны поиск, категория и сортировка; заказ оформляется для этого клиента.</figcaption></figure></div></article><article class="lesson" id="page-48"><p class="eyebrow"></p><h2>Проверка оформления и причины отказа</h2><div class="blocks"><section class="block text"><h3>Корзина и ожидание</h3><p>Откройте модель, выберите доступный размер и количество 1 → Добавить в заказ. Добавьте другую модель. В корзине выберите позицию, в поле количества введите 2 → Изменить количество. До Подтвердить заказ проверьте SELECT COUNT(*) FROM sales_order; и соответствующие available: значения прежние. Отказаться от заказа очищает корзину и также не меняет БД.</p></section><section class="block text"><h3>Сохранение</h3><p>Снова добавьте две позиции и подтвердите. В статусе появится номер заказа. SQL: SELECT * FROM sales_order ORDER BY order_id DESC LIMIT 1; затем SELECT * FROM order_line WHERE order_id=номер;. Сравните выбранного клиента, количества и unit_price с pp_price на дату заказа; остатки уменьшаются ровно на купленное количество. После возврата каталог уже содержит новые значения.</p></section><section class="block text"><h3>Воспроизведите нехватку</h3><p>Создайте корзину из двух позиций, у второй через поле изменения количества задайте значение больше фактического available. Подтвердите. Ожидается отказ и совет уменьшить количество. Сравните число заказов, строки и оба остатка до/после: первая позиция также не сохранена. Затем уменьшите количество и повторите: теперь заказ сохраняется. Это проверяет причину в SQL и повторный успешный результат.</p></section><section class="block text"><h3>Повторный ключ</h3><p>Администратором в SQL сохраните UUID() в переменную @key; вызовите pp_checkout с тем же @key дважды и одинаковыми позициями. Второй вызов возвращает тот же номер, число заголовков и остатков после первого вызова не меняется. В приложении busy защищает от двойного нажатия. При неясном исходе связи не изменяйте корзину, повторяйте подтверждение; после закрытия приложения сначала проверьте состояние БД.</p></section><figure class="block screenshot"><h3>Реальный результат в phpMyAdmin</h3><img src="assets/screenshots/93b9abb57e646e10.png" alt="Реальная ошибка NOT_ENOUGH_STOCK в phpMyAdmin; отсутствие частичных изменений дополнительно подтверждено SQL-проверкой."><figcaption>Реальная ошибка NOT_ENOUGH_STOCK в phpMyAdmin; отсутствие частичных изменений дополнительно подтверждено SQL-проверкой.</figcaption></figure></div></article><article class="lesson" id="page-49"><p class="eyebrow"></p><h2>Проверка календаря, истории и конкуренции</h2><div class="blocks"><section class="block text"><h3>Контролируемые даты</h3><p>В отдельной проверочной копии выберите модель, сохраните её исходную цену и историю. Для даты расчёта 2027-01-15 создайте тестовый заказ этой модели с ordered_at 2026-12-31 и известной строкой: pp_price(product_id,&#x27;2027-01-15&#x27;) даёт базовую цену. Перенесите дату на 2027-01-01: теперь прошлый месяц заказа не содержит, цена составляет 75%. Чтобы исходные данные не мешали, другие заказы выбранной модели в декабре на проверочном наборе временно перенесите вне интервала; все изменения выполняйте внутри BEGIN/ROLLBACK либо в отдельной копии.</p></section><section class="block text"><h3>Историческая цена</h3><p>Оформите заказ при действующей скидке. Сохраните unit_price. Администратором измените базовую product.price в проверочной копии, откройте каталог и состав заказа: текущая цена меняется, сохранённая unit_price прежняя. При изменении даты заказа административной функцией unit_price также не меняется. Не переоценивайте историю через UPDATE order_line.</p></section><section class="block text"><h3>Последняя позиция</h3><p>В отдельной копии установите одному item_id available=1 и откройте два независимых подключения клиента. В первом BEGIN; SELECT available FROM stock_item WHERE item_id=... FOR UPDATE; требует административного проверочного подключения, поскольку клиенту прямой SELECT запрещён. Запустите pp_checkout из двух клиентских соединений с разными ключами; снимите блокировку COMMIT в первом проверочном соединении. Только один заказ проходит, другой получает NOT_ENOUGH_STOCK; available=0. Вне тестовой копии не меняйте остатки ради проверки.</p></section><section class="block text"><h3>Что доказывает результат</h3><p>Сообщение ошибки подтверждает отказ интерфейса, а контрольные SELECT подтверждают отсутствие частичного изменения. Два соединения подтверждают блокировки при конкуренции; последовательные вызовы лишь подтверждают отказ после исчерпания остатка. Зафиксируйте оба вида доказательств.</p></section></div></article><article class="lesson" id="page-50"><p class="eyebrow"></p><h2>Проверка менеджера и администратора</h2><div class="blocks"><section class="block text"><h3>Менеджер</h3><p>Войдите pp_manager → Заказы. Выберите заголовок: нижняя таблица показывает модель, производство, размер, количество, цену и сумму. Нажмите Добавить заказ — возвращаетесь к каталогу; выберите клиента в правом списке, добавьте модели и подтвердите. Снова откройте Заказы: дата и ФИО совпадают с выбранным клиентом. Изменить дату и Удалить товарную позицию недоступны.</p></section><section class="block text"><h3>Удаление целого заказа</h3><p>Выберите новый небольшой заказ, сохраните остатки его позиций. Удалить заказ → Нет: данные прежние. Повторите → Да: заголовок и строки исчезают, количества возвращаются. После Назад перечитан каталог. Повторное удаление того же order_id через разрешённый CALL получает ORDER_NOT_FOUND и не увеличивает остаток снова.</p></section><section class="block text"><h3>Администратор</h3><p>Войдите pp_admin → Заказы. У заказа с двумя позициями удалите одну: вернулся только её остаток, сумма заказа уменьшилась по исторической цене оставшейся. Удалите вторую: пустой заголовок исчез. Для другого тестового заказа измените дату; исходные цены не меняются. Будущая дата должна отклониться. Выход возвращает гостя.</p></section><section class="block text"><h3>Проверка вне окна</h3><p>Войдите в phpMyAdmin отдельной сессией pp11_demo_client и попробуйте CALL pp_change_date с идентификатором администратора: EXECUTE запрещён. Под менеджерским подключением действие также запрещено. Прямые SELECT customer, UPDATE stock_item и DROP TABLE запрещены всем подключениям приложения. Из клиентского подключения передайте actor администратора в pp_checkout: pp_role откажет по несоответствию суффикса.</p></section><figure class="block screenshot"><h3>Реальный результат в WPF</h3><img src="assets/screenshots/38162c2d0f3c2a2a.png" alt="Окно учебного администратора с сохранённым заказом и составом выбранного заказа. Итог и цена строки прочитаны из MySQL; административные действия доступны этой роли."><figcaption>Окно учебного администратора с сохранённым заказом и составом выбранного заказа. Итог и цена строки прочитаны из MySQL; административные действия доступны этой роли.</figcaption></figure></div></article><article class="lesson" id="page-51"><p class="eyebrow"></p><h2>Резервная копия и передача пользователю</h2><div class="blocks"><section class="block text"><h3>Экспорт после доработки</h3><p>Выберите только свою рабочую БД → Экспорт → Обычный → SQL. Включите структуру, данные, функции и процедуры; проверьте наличие CREATE FUNCTION pp_price и CREATE PROCEDURE pp_checkout в полученном SQL. Экспорт одной БД не включает серверные учётные записи и GRANT. Пароли и настройки приложения хранятся отдельно локально.</p></section><section class="block text"><h3>Восстановление</h3><p>Создайте новую БД pp11_restore_demo или pp11_restore_vNN → Импорт резервной копии. На том же сервере DEFINER исходных объектов существует. Выполните точечные GRANT из 05_access.sql с именем восстановленной БД. В settings.local.json замените Database у всех подключений, соберите и запустите приложение. Сравните количества, суммы и исторические цены до нового заказа; повторите вход, каталог, подтверждение, список и удаление.</p></section><section class="block text"><h3>Передача</h3><p>В README укажите назначение проекта, используемую СУБД и версию приложения, последовательность создания БД/миграций/локальных подключений, способ запуска и восстановления. Объясните ограничения учебного входа по логину. Подготовьте репозиторий проекта без settings.local.json, паролей, личных путей и данных студентов. При сдаче проекта приложите ссылку на его репозиторий.</p></section><section class="block text"><h3>Своя область</h3><p>Возьмите тот же номер варианта из учебной практики. Сохраните схему модели/размера/остатка, замените Company и подключения, используйте её исходную БД. Данные торговой области не заменяются обувным набором демонстрации. Изображения, которых нет, корректно показываются через заглушку. Выполните оба дополнительных условия области и повторите общие проверки.</p></section></div></article></main><footer><span>ПМ.11 Разработка, администрирование и защита баз данных</span><span>Единый учебный комплект</span></footer></div></body></html>

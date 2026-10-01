@@ -1,0 +1,9 @@
+{
+  "Company": "Магазин «Пара»",
+  "Connections": {
+    "login": "Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_login;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5",
+    "client": "Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_client;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5",
+    "manager": "Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_manager;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5",
+    "admin": "Server=127.0.0.1;Database=pp11_demo;User ID=pp11_demo_admin;Password=ЗАМЕНИТЕ_ЛОКАЛЬНО;Connection Timeout=5"
+  }
+}
