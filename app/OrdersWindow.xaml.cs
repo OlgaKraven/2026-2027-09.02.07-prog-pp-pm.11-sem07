@@ -7,6 +7,8 @@ public partial class OrdersWindow : Window
     // === Доступ сотрудника и загрузка списка
     private readonly Repository repository;
     private bool busy;
+    private long? loadedOrder;
+    private int loadVersion;
     public OrdersWindow(Repository repository)
     {
         InitializeComponent();
@@ -14,7 +16,7 @@ public partial class OrdersWindow : Window
         Title = repository.Settings.Company + " — Заказы";
         UserText.Text = repository.User?.Fio;
         ChangeDateButton.IsEnabled = repository.User?.IsAdmin == true;
-        DeleteLineButton.IsEnabled = repository.User?.IsAdmin == true;
+        DeleteLineButton.IsEnabled = false;
         OrderDate.IsEnabled = repository.User?.IsAdmin == true;
     }
     private async void LoadedWindow(object sender, RoutedEventArgs e) => await Ui.Run(this, Reload);
@@ -23,20 +25,36 @@ public partial class OrdersWindow : Window
         : throw new InvalidOperationException("Выберите заказ в верхней таблице.");
     private async Task Reload()
     {
+        ClearLines();
         OrderGrid.ItemsSource = (await repository.Orders()).DefaultView;
+    }
+    private void ClearLines()
+    {
+        loadVersion++;
+        loadedOrder = null;
+        LineGrid.SelectedItem = null;
         LineGrid.ItemsSource = null;
+        DeleteLineButton.IsEnabled = false;
     }
     private async void OrderChanged(object sender, SelectionChangedEventArgs e) => await Ui.Run(this, async () =>
     {
+        ClearLines();
+        int version = loadVersion;
         if (OrderGrid.SelectedItem is DataRowView row)
         {
             long id = Convert.ToInt64(row["order_id"]);
             OrderDate.SelectedDate = Convert.ToDateTime(row["ordered_at"]);
             DataTable lines = await repository.Lines(id);
-            if (OrderGrid.SelectedItem is DataRowView current && Convert.ToInt64(current["order_id"]) == id)
+            if (version == loadVersion && OrderGrid.SelectedItem is DataRowView current && Convert.ToInt64(current["order_id"]) == id)
             {
                 LineGrid.ItemsSource = lines.DefaultView;
+                loadedOrder = id;
+                DeleteLineButton.IsEnabled = repository.User?.IsAdmin == true;
             }
+        }
+        else
+        {
+            OrderDate.SelectedDate = null;
         }
     });
     // === Подтверждение необратимых действий и обновление
@@ -48,9 +66,15 @@ public partial class OrdersWindow : Window
         }
         busy = true;
         IsEnabled = false;
-        await Ui.Run(this, action);
-        IsEnabled = true;
-        busy = false;
+        try
+        {
+            await Ui.Run(this, action);
+        }
+        finally
+        {
+            IsEnabled = true;
+            busy = false;
+        }
     }
     private async void DeleteOrderClick(object sender, RoutedEventArgs e) => await Mutate(async () =>
     {
@@ -64,6 +88,10 @@ public partial class OrdersWindow : Window
     private async void DeleteLineClick(object sender, RoutedEventArgs e) => await Mutate(async () =>
     {
         long order = SelectedOrder;
+        if (loadedOrder != order)
+        {
+            throw new InvalidOperationException("Дождитесь загрузки состава выбранного заказа.");
+        }
         if (LineGrid.SelectedItem is not DataRowView row)
         {
             throw new InvalidOperationException("Выберите товарную позицию в нижней таблице.");
