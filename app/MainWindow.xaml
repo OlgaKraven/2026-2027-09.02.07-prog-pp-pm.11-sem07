@@ -55,7 +55,7 @@
          <TextBlock Text="{Binding Name}" FontSize="20" FontWeight="Bold" TextWrapping="Wrap" />
          <TextBlock Text="{Binding Manufacturer,StringFormat=Производство: {0}}" />
          <TextBlock Text="{Binding Composition,StringFormat=Состав: {0}}" TextWrapping="Wrap" />
-         <TextBlock Text="{Binding StockLabel,StringFormat=На складе: {0}}" />
+         <TextBlock><Run Text="На складе: " /><Run Text="{Binding StockLabel,Mode=OneWay}" /><Run Text="; всего по размерам: " /><Run Text="{Binding Available,Mode=OneWay}" /></TextBlock>
         </StackPanel>
         <StackPanel Grid.Column="2" VerticalAlignment="Center">
          <TextBlock Text="{Binding FinalPrice,StringFormat={}{0:N2} ₽}" FontSize="22" FontWeight="Bold" />

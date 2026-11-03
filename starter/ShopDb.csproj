@@ -8,7 +8,7 @@
     <ApplicationIcon>Assets\shop.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="MySqlConnector" Version="2.5.0" />
+    <PackageReference Include="MySqlConnector" Version="2.6.1" />
     <None Update="settings.local.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Assets\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Remove="Assets\logo.png;Assets\shop.ico" />
