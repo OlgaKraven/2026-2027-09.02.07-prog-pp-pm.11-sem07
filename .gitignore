@@ -5,3 +5,5 @@ artifacts/
 settings.local.json
 .inventory-qa/
 .playwright-cli/
+
+__pycache__/
